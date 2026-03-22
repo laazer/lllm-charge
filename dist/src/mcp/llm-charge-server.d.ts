@@ -1,0 +1,35 @@
+import { LLMChargeConfig } from '@/core/types';
+export declare class LLMChargeServer {
+    private config;
+    private projectPath;
+    private server;
+    private intelligence;
+    private docsIntelligence;
+    private reasoning;
+    private costTracker;
+    private commandHandler;
+    private knowledgeBase;
+    private initialized;
+    constructor(config: LLMChargeConfig, projectPath: string);
+    start(): Promise<void>;
+    private initialize;
+    private setupToolHandlers;
+    private handleBuildContextPackage;
+    private handleSearchCodeSymbols;
+    private handleGetContextTree;
+    private handleGetFileSkeleton;
+    private handleGetBlastRadius;
+    private handleSemanticNavigate;
+    private handleHybridReasoning;
+    private handleStartRLMSession;
+    private handleGetReasoningSession;
+    private handleUpdateMemory;
+    private handleCreateMemoryRelation;
+    private handleSearchMemory;
+    private handleGetCostMetrics;
+    private handleOptimizeLocalUsage;
+    private handleGetSystemStatus;
+    private handleExecuteCommonCommand;
+    private handleListAvailableCommands;
+    private handleDocsTool;
+}

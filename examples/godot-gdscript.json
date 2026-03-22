@@ -1,0 +1,81 @@
+{
+  "name": "Godot Game Development with GDScript",
+  "description": "LLM-Charge configuration optimized for Godot game development projects",
+  "config": {
+    "intelligence": {
+      "enableCodeGraph": true,
+      "enableContextPlus": true,
+      "enableSemanticSearch": true,
+      "enableMemoryGraph": true,
+      "cacheDir": "./.llm-charge/cache",
+      "maxFileSize": 2097152,
+      "embedModel": "nomic-embed-text"
+    },
+    "reasoning": {
+      "enableRLM": true,
+      "maxDepth": 4,
+      "environment": "local",
+      "timeoutMs": 90000,
+      "maxIterations": 8
+    },
+    "local": {
+      "provider": "ollama",
+      "baseUrl": "http://localhost:11434",
+      "models": {
+        "primary": "codellama:7b",
+        "reasoning": "llama3.2",
+        "embedding": "nomic-embed-text",
+        "chat": "llama3.2"
+      },
+      "maxTokens": 3000,
+      "temperature": 0.2
+    },
+    "api": {
+      "providers": {
+        "openai": { 
+          "apiKey": "your-openai-api-key"
+        }
+      },
+      "fallbackStrategy": "local-first",
+      "maxCostPerHour": 0.75,
+      "trackUsage": true
+    },
+    "cache": {
+      "enableEmbeddingCache": true,
+      "enableContextCache": true,
+      "enableResultCache": true,
+      "ttlSeconds": 7200,
+      "maxSizeMB": 750
+    }
+  },
+  "setup_instructions": [
+    "1. Ensure Ollama is installed and running",
+    "2. Pull required models: ollama pull codellama:7b && ollama pull llama3.2 && ollama pull nomic-embed-text",
+    "3. Navigate to your Godot project root directory",
+    "4. Run: llm-charge init --config examples/godot-gdscript.json",
+    "5. Start the server: llm-charge serve"
+  ],
+  "recommended_queries": {
+    "scene_analysis": "Analyze this Godot scene structure and suggest improvements for performance",
+    "script_optimization": "Review this GDScript code for optimization opportunities and best practices",
+    "signal_connections": "Explain how signals work between these nodes and suggest better patterns",
+    "game_mechanics": "Help me implement a state machine for this character controller",
+    "performance_debug": "This script is causing frame drops - what could be the issue?",
+    "architecture": "Design a save/load system for this RPG game using GDScript"
+  },
+  "gdscript_specific_tools": {
+    "node_hierarchy_analysis": "Analyzes node relationships and parent-child structures",
+    "signal_graph_mapping": "Maps signal connections throughout the scene tree",
+    "script_performance_hints": "Identifies potential performance issues in GDScript",
+    "godot_api_suggestions": "Suggests appropriate Godot API calls for game mechanics",
+    "scene_optimization": "Recommends scene structure optimizations"
+  },
+  "common_patterns": {
+    "singletons": "Autoload scripts for global game state management",
+    "state_machines": "Finite state machines for character and game states",
+    "object_pooling": "Efficient object reuse for bullets, enemies, effects",
+    "event_systems": "Signal-based event communication patterns",
+    "save_systems": "JSON-based save/load implementations",
+    "ui_controllers": "Separation of UI logic from game logic"
+  }
+}

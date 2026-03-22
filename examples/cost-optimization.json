@@ -1,0 +1,108 @@
+{
+  "name": "Maximum Cost Optimization",
+  "description": "LLM-Charge configuration focused on minimizing API costs while maintaining quality",
+  "config": {
+    "intelligence": {
+      "enableCodeGraph": true,
+      "enableContextPlus": true,
+      "enableSemanticSearch": true,
+      "enableMemoryGraph": true,
+      "cacheDir": "./.llm-charge/cache",
+      "maxFileSize": 524288,
+      "embedModel": "nomic-embed-text"
+    },
+    "reasoning": {
+      "enableRLM": true,
+      "maxDepth": 6,
+      "environment": "local",
+      "timeoutMs": 180000,
+      "maxIterations": 12
+    },
+    "local": {
+      "provider": "ollama",
+      "baseUrl": "http://localhost:11434",
+      "models": {
+        "primary": "llama3.2",
+        "reasoning": "llama3.2",
+        "embedding": "nomic-embed-text",
+        "chat": "llama3.2"
+      },
+      "maxTokens": 2000,
+      "temperature": 0.1
+    },
+    "api": {
+      "providers": {
+        "openai": { 
+          "apiKey": "your-openai-api-key"
+        },
+        "anthropic": { 
+          "apiKey": "your-anthropic-api-key"
+        }
+      },
+      "fallbackStrategy": "local-first",
+      "maxCostPerHour": 0.25,
+      "trackUsage": true
+    },
+    "cache": {
+      "enableEmbeddingCache": true,
+      "enableContextCache": true,
+      "enableResultCache": true,
+      "ttlSeconds": 14400,
+      "maxSizeMB": 1000
+    }
+  },
+  "optimization_strategies": {
+    "aggressive_local_routing": {
+      "description": "Routes 90%+ queries to local models",
+      "complexity_threshold": 0.9,
+      "token_limit_local": 2000,
+      "fallback_only_for": ["critical_bugs", "production_issues"]
+    },
+    "enhanced_caching": {
+      "description": "Aggressive caching to avoid repeated computations",
+      "embedding_cache_size": "1GB",
+      "context_cache_ttl": "4 hours",
+      "result_cache_similarity": 0.85
+    },
+    "rlm_optimization": {
+      "description": "Use RLM for complex tasks that would normally need API",
+      "enable_for_complexity": 0.6,
+      "max_local_iterations": 12,
+      "timeout_generous": "3 minutes"
+    },
+    "memory_graph_learning": {
+      "description": "Build comprehensive memory to reduce exploration needs",
+      "auto_update_memory": true,
+      "relationship_strength_threshold": 0.7,
+      "prune_stale_links": true
+    }
+  },
+  "cost_targets": {
+    "daily_budget": "$0.50",
+    "monthly_budget": "$15.00",
+    "api_request_ratio": "< 15%",
+    "local_success_rate": "> 85%",
+    "cost_per_request": "< $0.002"
+  },
+  "monitoring": {
+    "cost_alerts": {
+      "hourly_threshold": "$0.10",
+      "daily_threshold": "$0.75",
+      "weekly_threshold": "$3.00"
+    },
+    "performance_metrics": {
+      "track_latency": true,
+      "track_quality_scores": true,
+      "track_success_rates": true,
+      "generate_reports": "daily"
+    }
+  },
+  "setup_instructions": [
+    "1. Install and configure your local LLM provider (Ollama recommended for cost efficiency)",
+    "2. Ensure you have sufficient local compute resources (8GB+ RAM, GPU recommended)",
+    "3. Set very low API cost limits to force local usage",
+    "4. Monitor daily with: llm-charge status",
+    "5. Run weekly optimization: llm-charge optimize --workload general",
+    "6. Use cost tracking: llm-charge optimize --benchmark"
+  ]
+}

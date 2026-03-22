@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/jacob.brandt/workspace/**)",
+      "Bash(npx tsx scripts/verify-tests.ts)",
+      "Bash(npm test)",
+      "Bash(npm install)",
+      "Bash(npm view anthropic versions --json)",
+      "Bash(npm search anthropic)",
+      "Bash(npm install --no-optional)",
+      "Bash(npm test -- --passWithNoTests)",
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run test:coverage)",
+      "Bash(sed -i '' 's/executionTime: 0$/executionTime: 0,\\n      cost: 0/g' /Users/jacob.brandt/workspace/lllm-charge/src/utils/common-commands.ts)",
+      "Bash(npx jest --coverage --testTimeout=10000 --passWithNoTests)",
+      "Bash(npx jest tests/unit --coverage --testTimeout=5000)",
+      "Bash(find tests -name \"*.test.ts\" -exec basename {})",
+      "Bash(find src -name \"*.ts\" -exec basename {})",
+      "Bash(find . -name package.json -exec cat {} ;)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

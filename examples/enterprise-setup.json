@@ -1,0 +1,155 @@
+{
+  "name": "Enterprise Development Setup",
+  "description": "LLM-Charge configuration for enterprise development teams with high-quality requirements",
+  "config": {
+    "intelligence": {
+      "enableCodeGraph": true,
+      "enableContextPlus": true,
+      "enableSemanticSearch": true,
+      "enableMemoryGraph": true,
+      "cacheDir": "./.llm-charge/cache",
+      "maxFileSize": 5242880,
+      "embedModel": "nomic-embed-text"
+    },
+    "reasoning": {
+      "enableRLM": true,
+      "maxDepth": 8,
+      "environment": "docker",
+      "timeoutMs": 300000,
+      "maxIterations": 15
+    },
+    "local": {
+      "provider": "vllm",
+      "baseUrl": "http://localhost:8000",
+      "models": {
+        "primary": "codellama:34b",
+        "reasoning": "llama3.2:70b",
+        "embedding": "nomic-embed-text",
+        "chat": "llama3.2:70b"
+      },
+      "maxTokens": 8000,
+      "temperature": 0.2
+    },
+    "api": {
+      "providers": {
+        "openai": { 
+          "apiKey": "your-openai-api-key",
+          "baseUrl": "https://api.openai.com/v1"
+        },
+        "anthropic": { 
+          "apiKey": "your-anthropic-api-key"
+        }
+      },
+      "fallbackStrategy": "hybrid",
+      "maxCostPerHour": 5.0,
+      "trackUsage": true
+    },
+    "cache": {
+      "enableEmbeddingCache": true,
+      "enableContextCache": true,
+      "enableResultCache": true,
+      "ttlSeconds": 3600,
+      "maxSizeMB": 2000
+    }
+  },
+  "enterprise_features": {
+    "security": {
+      "isolated_execution": "Docker containers for RLM sessions",
+      "no_data_retention": "API providers configured with no training data retention",
+      "local_embeddings": "All embeddings generated locally",
+      "audit_logging": "Full request/response logging for compliance"
+    },
+    "scalability": {
+      "distributed_caching": "Redis-backed cache for team sharing",
+      "load_balancing": "Multiple local model instances",
+      "horizontal_scaling": "Multi-node RLM execution",
+      "resource_management": "CPU/GPU resource pools"
+    },
+    "quality_assurance": {
+      "model_validation": "Automated quality benchmarks",
+      "response_scoring": "Built-in quality metrics",
+      "fallback_triggers": "Automatic API fallback for critical tasks",
+      "performance_monitoring": "Real-time latency and success rate tracking"
+    },
+    "team_collaboration": {
+      "shared_memory_graph": "Team-wide knowledge accumulation",
+      "project_templates": "Standardized configurations per project type",
+      "usage_analytics": "Team usage patterns and optimization suggestions",
+      "cost_allocation": "Per-team/per-project cost tracking"
+    }
+  },
+  "hardware_requirements": {
+    "minimum": {
+      "cpu": "16 cores",
+      "ram": "32GB",
+      "gpu": "NVIDIA RTX 4090 or equivalent",
+      "storage": "1TB NVMe SSD"
+    },
+    "recommended": {
+      "cpu": "32 cores",
+      "ram": "128GB", 
+      "gpu": "NVIDIA H100 or A100",
+      "storage": "2TB NVMe SSD"
+    }
+  },
+  "deployment_options": {
+    "on_premise": {
+      "description": "Full on-premise deployment with local infrastructure",
+      "components": ["vLLM server cluster", "Redis cache", "Docker runtime"],
+      "networking": "Internal network only, no external API calls",
+      "management": "Kubernetes orchestration recommended"
+    },
+    "hybrid_cloud": {
+      "description": "Local models with cloud API fallback",
+      "components": ["On-premise vLLM", "Cloud API integration", "VPN tunneling"],
+      "networking": "Selective external access for API fallback",
+      "management": "Cloud-native scaling for peak loads"
+    },
+    "private_cloud": {
+      "description": "Private cloud deployment with dedicated resources",
+      "components": ["Private GPU cloud", "Managed services", "Auto-scaling"],
+      "networking": "Private network with API gateway",
+      "management": "Fully managed service with SLA guarantees"
+    }
+  },
+  "compliance_features": {
+    "data_governance": {
+      "data_classification": "Automatic PII/sensitive data detection",
+      "retention_policies": "Configurable data retention periods",
+      "access_controls": "Role-based access to different intelligence levels",
+      "audit_trails": "Complete audit logs for all operations"
+    },
+    "regulatory_compliance": {
+      "gdpr": "Data processing transparency and deletion rights",
+      "hipaa": "Healthcare data protection when applicable",
+      "sox": "Financial data handling compliance",
+      "iso_27001": "Information security management"
+    }
+  },
+  "setup_instructions": [
+    "1. Provision enterprise-grade hardware (see hardware requirements)",
+    "2. Set up vLLM server cluster with load balancing",
+    "3. Configure Redis for distributed caching",
+    "4. Set up Docker/Kubernetes for isolated RLM execution",
+    "5. Configure monitoring and alerting systems",
+    "6. Set up team access controls and project templates",
+    "7. Run comprehensive benchmarks and quality validation",
+    "8. Deploy to production with staged rollout"
+  ],
+  "cost_projections": {
+    "team_of_10_developers": {
+      "monthly_api_costs_without": "$450 - $800",
+      "monthly_api_costs_with": "$100 - $200",
+      "hardware_investment": "$15,000 - $30,000",
+      "roi_timeline": "3-6 months",
+      "ongoing_savings": "$300 - $600/month"
+    },
+    "team_of_50_developers": {
+      "monthly_api_costs_without": "$2,000 - $4,000", 
+      "monthly_api_costs_with": "$400 - $800",
+      "hardware_investment": "$50,000 - $100,000",
+      "roi_timeline": "2-4 months",
+      "ongoing_savings": "$1,600 - $3,200/month"
+    }
+  }
+}

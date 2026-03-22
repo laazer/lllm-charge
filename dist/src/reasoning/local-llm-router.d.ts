@@ -1,0 +1,36 @@
+import { LLMRequest, LLMResponse, LocalLLMConfig, APIConfig, CostMetrics } from '@/core/types';
+export declare class LocalLLMRouter {
+    private localConfig;
+    private apiConfig;
+    private costMetrics;
+    private modelCapabilities;
+    private failureCount;
+    constructor(localConfig: LocalLLMConfig, apiConfig: APIConfig);
+    processRequest(request: LLMRequest): Promise<LLMResponse>;
+    private shouldUseLocalModel;
+    private callLocalModel;
+    private callOllama;
+    private callVLLM;
+    private callLlamaCpp;
+    private callLMStudio;
+    private callAPIModel;
+    private callSpecificAPI;
+    private callOpenAI;
+    private callAnthropic;
+    private callGoogle;
+    private buildPrompt;
+    private isLocalModelHealthy;
+    private canHandleRequest;
+    private isSimpleRequest;
+    private assessComplexity;
+    private getHourlySpend;
+    private updateMetrics;
+    private estimateAPICost;
+    private calculateOpenAICost;
+    private calculateAnthropicCost;
+    private estimateTokens;
+    private incrementFailureCount;
+    private resetFailureCount;
+    private initializeModelCapabilities;
+    getCostMetrics(): CostMetrics;
+}
