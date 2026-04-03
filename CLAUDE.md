@@ -180,9 +180,9 @@ const securityPolicy: SecurityPolicy = {
 | Memory Usage | < 512MB | 485MB |
 | Cost Savings | > 75% | 77% |
 
-## 🚀 Deployment Guidelines
+## 🚀 Development & Deployment Guidelines
 
-### Development Environment
+### Development Environment Setup
 
 ```bash
 # Clone and setup
@@ -190,16 +190,182 @@ git clone https://github.com/your-username/lllm-charge.git
 cd lllm-charge
 npm install
 
-# Environment configuration
+# Environment configuration (optional - has sensible defaults)
 cp .env.example .env
-# Edit .env with your settings
-
-# Start development server
-npm run dev
-
-# Run tests
-npm test
+# Edit .env with your settings if needed
 ```
+
+### Development Startup (Current System)
+
+The LLM-Charge system consists of two main components that should be run together:
+
+#### Option 1: Quick Start (Recommended)
+```bash
+# Start both backend and frontend in development mode
+npm run dev:full                    # Comprehensive backend + React frontend
+
+# Alternative: Basic backend + React frontend  
+npm run dev:full:basic              # Basic backend + React frontend
+```
+
+#### Option 2: Start Components Individually
+```bash
+# Terminal 1: Start the comprehensive backend server
+npm run dev:server:comprehensive    # Full-featured server on port 3001
+
+# Terminal 2: Start the React frontend
+npm run dev:react                   # React dev server on port 3000
+
+# Alternative backend servers:
+npm run dev:server                  # Basic backend server
+npm run start                       # Production backend server
+```
+
+#### System Verification
+
+After startup, verify the system is working:
+
+```bash
+# Check backend health
+curl http://localhost:3001/api/test
+
+# Check frontend
+curl http://localhost:3000
+
+# Test hybrid reasoning
+curl -X POST http://localhost:3001/mcp/call/hybrid_reasoning \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Hello world", "complexity": "simple", "preferLocal": true}'
+
+# Test DevDocs integration
+curl -X POST http://localhost:3001/api/devdocs/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "javascript", "language": "javascript"}'
+```
+
+#### Available Services
+
+Once running, you can access:
+
+- **React Dashboard**: http://localhost:3000 - Modern React frontend with real-time metrics
+- **Legacy Dashboard**: http://localhost:3001 - Original HTML dashboard
+- **API Endpoints**: http://localhost:3001/api/* - RESTful API
+- **MCP Tools**: http://localhost:3001/mcp/* - Model Context Protocol tools
+- **Workflow Editor**: http://localhost:3001/workflow-editor.html - Visual workflow builder
+- **Agent Studio**: http://localhost:3001/agent-studio.html - Agent management interface
+
+### System Architecture (Current Implementation)
+
+The system now includes:
+
+1. **Comprehensive Backend Server** (`npm run dev:server:comprehensive`):
+   - MCP (Model Context Protocol) integration
+   - Hybrid reasoning with local/cloud routing
+   - DevDocs integration for offline documentation
+   - Independent database architecture (agents, flows, main data)
+   - Real-time WebSocket connections
+   - Complete API suite with 30+ endpoints
+
+2. **React Frontend** (`npm run dev:react`):
+   - Modern React 19 with TypeScript
+   - Real-time dashboard with WebSocket integration  
+   - Responsive design with Tailwind CSS
+   - Component-based architecture
+   - Production-ready build system
+
+### NPM Scripts Reference
+
+```bash
+# Development
+npm run dev:full                    # Start both backend + frontend (recommended)
+npm run dev:server:comprehensive   # Comprehensive backend only
+npm run dev:react                   # React frontend only
+
+# Building
+npm run build                       # Build TypeScript backend
+npm run build:react                 # Build React production bundle
+npm run build:production            # Build both backend and frontend
+
+# Testing
+npm test                           # Run all tests
+npm run test:react                 # Run React-specific tests
+npm run test:integration           # Integration tests
+npm run test:coverage              # Generate coverage report
+
+# Utilities  
+npm run zip                        # Create timestamped release zip (cross-platform)
+npm run zip:win                    # Windows-specific zip creation
+npm run setup                      # Load default agents and workflows
+npm run typecheck                  # TypeScript type checking
+npm run lint                       # ESLint code linting
+```
+
+### Troubleshooting Development Issues
+
+#### Common Issues and Solutions
+
+**Backend server won't start:**
+- Check if port 3001 is available: `lsof -i :3001`
+- Kill existing processes: `pkill -f "comprehensive-working-server"`
+- Check for missing dependencies: `npm install`
+
+**React frontend won't start:**
+- Check if port 3000 is available: `lsof -i :3000` 
+- Clear Vite cache: `rm -rf node_modules/.vite`
+- Restart with clean cache: `npm run dev:react -- --force`
+
+**API endpoints not responding:**
+- Verify backend is running: `curl http://localhost:3001/api/test`
+- Check backend logs for errors
+- Ensure database files exist in `data/` directory
+
+**WebSocket connection issues:**
+- Verify WebSocket endpoint: Open browser dev tools → Network tab
+- Check for CORS issues in browser console
+- Restart both frontend and backend servers
+
+### Release Management
+
+#### Creating Release Packages
+
+The project includes comprehensive release packaging scripts that create clean, timestamped zip files:
+
+```bash
+# Create release zip (cross-platform)
+npm run zip                        # Creates: llm-charge-YYYYMMDD_HHMMSS.zip
+
+# Windows-specific (if on Windows)
+npm run zip:win                    # Uses 7-Zip or PowerShell fallback
+```
+
+#### What's Included in Release Zips
+
+✅ **Included:**
+- Source code (`src/`)
+- Configuration files (`package.json`, `tsconfig.json`, etc.)
+- Documentation (all `.md` files)
+- Tests (`tests/`)
+- Database files (`data/`)
+- Scripts (`scripts/`)
+- Docker files
+
+❌ **Excluded:**
+- `node_modules/` (all levels)
+- Build artifacts (`dist/`, `build/`, `.vite/`)
+- Environment files (`.env*`)
+- Log files (`*.log`, `logs/`)
+- Cache directories (`.cache/`, `.eslintcache`)
+- Temporary files (`tmp/`, `temp/`)
+- OS-specific files (`.DS_Store`, `Thumbs.db`)
+
+#### Release Features
+
+- **Automatic timestamping** in filename format `YYYYMMDD_HHMMSS`
+- **Cross-platform scripts** (bash for Unix/macOS/Linux, batch for Windows)
+- **Size reporting** with human-readable format (MB/KB/bytes)
+- **Content verification** with file listing
+- **Comprehensive exclusion patterns** to ensure clean packages
+- **Colorized output** for better user experience
 
 ### Production Deployment
 

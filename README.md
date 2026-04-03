@@ -39,19 +39,19 @@ LLM-Charge is a comprehensive platform that supercharges local LLMs through inte
 ### Installation
 
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd lllm-charge
+
 # Install dependencies
 npm install
 
-# Build the project
-npm run build
-
-# Start the server
-npm start
+# The postinstall script will automatically load default agents, skills, and specs
 ```
 
 ### Basic Configuration
 
-Create a `.env` file:
+The system comes with sensible defaults. Create a `.env` file if you need custom configuration:
 
 ```env
 # Local LLM Configuration
@@ -63,22 +63,91 @@ LM_STUDIO_PORT=1234
 OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
 
-# Dashboard Configuration
-DASHBOARD_PORT=3001
-WS_PORT=3002
+# Database Paths
+MAIN_DATABASE_PATH=./data/llm-charge.db
+AGENTS_DATABASE_PATH=./data/agents.db
+FLOWS_DATABASE_PATH=./data/flows.db
 
-# Security
-JWT_SECRET=your_secure_secret
+# Server Configuration
+PORT=3001
+NODE_ENV=development
 ```
 
-### First Run
+### Development Startup (Recommended)
 
 ```bash
-# Start in development mode
-npm run dev
+# Start both backend and React frontend simultaneously
+npm run dev:full
 
-# Or start in production mode
+# Or start individually:
+# Backend with comprehensive MCP integration
+npm run dev:server:comprehensive
+
+# React frontend (in separate terminal)
+npm run dev:react
+```
+
+**Access Points:**
+- 🌐 **React Dashboard**: http://localhost:3000
+- 🔧 **Backend API**: http://localhost:3001
+- 🔌 **WebSocket**: ws://localhost:3001
+
+### Production Startup
+
+```bash
+# Build for production
+npm run build:production
+
+# Start production server
 npm start
+
+# Or use Docker
+docker-compose -f docker-compose.production.yml up
+```
+
+### System Health Check
+
+After startup, verify the system is working:
+
+```bash
+# Check API endpoints
+curl http://localhost:3001/api/projects
+curl http://localhost:3001/api/specs
+
+# Test hybrid reasoning
+curl -X POST http://localhost:3001/mcp/call/hybrid_reasoning \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Hello world", "complexity": "simple", "preferLocal": true}'
+
+# Test DevDocs integration
+curl -X POST http://localhost:3001/api/devdocs/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "async await", "language": "javascript"}'
+```
+
+### Available NPM Scripts
+
+```bash
+# Development
+npm run dev:full              # Start backend + React (recommended)
+npm run dev:server:comprehensive  # Backend only (comprehensive features)
+npm run dev:react             # React frontend only
+
+# Building
+npm run build                 # Build backend
+npm run build:react           # Build React frontend
+npm run build:production      # Build both for production
+
+# Testing
+npm run test                  # Run all tests
+npm run test:react            # React-specific tests
+npm run test:integration      # Integration tests
+
+# Utilities
+npm run zip                   # Create clean release zip
+npm run setup                 # Load default agents/skills
+npm run lint                  # Run linting
+npm run typecheck             # TypeScript validation
 ```
 
 ## 📖 Usage Examples
@@ -468,6 +537,83 @@ npm run build
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Server Won't Start
+```bash
+# Check if ports are available
+lsof -ti:3001  # Backend port
+lsof -ti:3000  # Frontend port
+
+# Kill processes if needed
+kill $(lsof -ti:3001)
+
+# Restart with fresh logs
+npm run dev:full
+```
+
+#### Database Issues
+```bash
+# Reset databases (will lose data)
+rm -rf data/*.db
+
+# Restart to recreate with defaults
+npm run dev:server:comprehensive
+```
+
+#### Missing Local LLM Provider
+- **Ollama**: Install from [ollama.com](https://ollama.com)
+- **LM Studio**: Download from [lmstudio.ai](https://lmstudio.ai)
+- The system will show provider status in logs and continue with available providers
+
+#### React Build Issues
+```bash
+# Clear build cache
+npm run clean
+
+# Reinstall dependencies
+rm -rf node_modules package-lock.json
+npm install
+
+# Rebuild
+npm run build:production
+```
+
+#### WebSocket Connection Issues
+- Check if backend server is running on port 3001
+- Verify no firewall is blocking WebSocket connections
+- Check browser console for WebSocket errors
+
+### System Status Verification
+
+After startup, you should see:
+```
+✅ Main database initialized
+✅ Independent agent database initialized  
+✅ Independent flow database initialized
+✅ lm-studio is healthy (Xms) - N models available
+🌐 Server started at http://localhost:3001
+```
+
+### Performance Tuning
+
+For better performance:
+```env
+# Add to .env file
+NODE_ENV=production
+ENABLE_CACHING=true
+MAX_CONCURRENT_REQUESTS=10
+```
+
+### Logs and Debugging
+
+Check logs in:
+- Console output from `npm run dev:full`
+- Network tab in browser dev tools
+- Backend API responses: `curl -v http://localhost:3001/api/projects`
 
 ## 🙏 Acknowledgments
 

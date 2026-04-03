@@ -95,8 +95,8 @@ export class LocalLLMRouter {
       case 'lmstudio':
         return this.callLMStudio(request, model)
       default:
-        // Default to Ollama format
-        return this.callOllama(request, model)
+        // Default to LM Studio format
+        return this.callLMStudio(request, model)
     }
   }
 

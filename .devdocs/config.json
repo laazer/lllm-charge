@@ -1,0 +1,15 @@
+{
+  "javascript": {
+    "language": "javascript",
+    "docs": [
+      "javascript",
+      "nodejs",
+      "dom",
+      "lodash",
+      "jquery"
+    ],
+    "enabled": true,
+    "downloadPath": "/Users/jacob.brandt/workspace/lllm-charge/.devdocs/javascript",
+    "lastUpdated": "2026-03-25T15:36:16.207Z"
+  }
+}

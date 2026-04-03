@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Final Drag Functionality Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .test-results { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>🖱️ Final Drag Functionality Verification</h1>
+    <p>This page verifies that both critical drag functionality fixes are working correctly.</p>
+    
+    <div id="test-results" class="test-results"></div>
+    
+    <button onclick="testBothFixes()">Test Both Fixes</button>
+    <button onclick="openTestWorkflow()">Open Test Workflow</button>
+    <button onclick="testPositionStructure()">Test Position Structure Fix</button>
+    
+    <script>
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `${new Date().toLocaleTimeString()}: ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function testBothFixes() {
+            addResult('🔧 Testing both critical fixes...', 'info');
+            
+            try {
+                const response = await fetch('/workflow-editor.html');
+                const html = await response.text();
+                
+                // Test 1: Parameter mismatch fix
+                const parameterFix = html.includes('this.setupNodeInteractions(nodeElement, nodeData)');
+                addResult(`Fix 1 - Parameter Mismatch: ${parameterFix ? '✅ FIXED' : '❌ NOT FIXED'}`, 
+                         parameterFix ? 'success' : 'error');
+                
+                // Test 2: Position structure fix
+                const positionFixes = [
+                    html.includes('startNodeX = nodeData.position.x'),
+                    html.includes('startNodeY = nodeData.position.y'),
+                    html.includes('nodeData.position.x = startNodeX + deltaX'),
+                    html.includes('nodeData.position.y = startNodeY + deltaY'),
+                    html.includes('element.style.left = nodeData.position.x'),
+                    html.includes('element.style.top = nodeData.position.y')
+                ];
+                
+                const positionFixCount = positionFixes.filter(fix => fix).length;
+                addResult(`Fix 2 - Position Structure: ${positionFixCount}/6 fixes applied`, 
+                         positionFixCount === 6 ? 'success' : 'error');
+                
+                // Test 3: Broken patterns should NOT exist
+                const brokenPatterns = [
+                    html.includes('this.setupNodeInteractions(node);'),
+                    html.includes('startNodeX = nodeData.x;'),
+                    html.includes('element.style.left = nodeData.x')
+                ];
+                
+                const noBrokenPatterns = brokenPatterns.every(pattern => !pattern);
+                addResult(`Fix 3 - No Broken Patterns: ${noBrokenPatterns ? '✅ CLEAN' : '❌ FOUND ISSUES'}`, 
+                         noBrokenPatterns ? 'success' : 'error');
+                
+                // Overall status
+                const allFixed = parameterFix && (positionFixCount === 6) && noBrokenPatterns;
+                addResult(`🎯 Overall Status: ${allFixed ? '✅ ALL FIXES APPLIED' : '❌ FIXES INCOMPLETE'}`, 
+                         allFixed ? 'success' : 'error');
+                
+                if (allFixed) {
+                    addResult('🚀 Drag functionality should now be working!', 'success');
+                    addResult('👆 Click "Open Test Workflow" to manually test dragging', 'info');
+                } else {
+                    addResult('⚠️ Some fixes may not be complete. Check implementation.', 'error');
+                }
+                
+            } catch (error) {
+                addResult(`❌ Error testing fixes: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testPositionStructure() {
+            addResult('🧪 Testing position structure compatibility with API...', 'info');
+            
+            try {
+                const workflowId = 'workflow-1774963653867-qq584l59j';
+                const response = await fetch(`/api/workflows/${workflowId}`);
+                
+                if (response.ok) {
+                    const workflow = await response.json();
+                    addResult(`✅ Test workflow loaded: "${workflow.name}"`, 'success');
+                    
+                    let positionStructureValid = true;
+                    workflow.nodes.forEach((node, index) => {
+                        if (node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number') {
+                            addResult(`  Node ${index + 1}: position.x=${node.position.x}, position.y=${node.position.y} ✅`, 'success');
+                        } else {
+                            addResult(`  Node ${index + 1}: Invalid position structure ❌`, 'error');
+                            positionStructureValid = false;
+                        }
+                    });
+                    
+                    if (positionStructureValid) {
+                        addResult('🎯 Position structure is compatible with drag fix!', 'success');
+                    }
+                } else {
+                    addResult(`❌ Failed to load test workflow - ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Position structure test error: ${error.message}`, 'error');
+            }
+        }
+        
+        function openTestWorkflow() {
+            addResult('🚀 Opening test workflow in workflow editor...', 'info');
+            
+            const workflowId = 'workflow-1774963653867-qq584l59j';
+            const editorUrl = `/workflow-editor.html?id=${workflowId}`;
+            
+            window.open(editorUrl, '_blank');
+            addResult(`✅ Test workflow opened: ${editorUrl}`, 'success');
+            addResult('🎯 Manual Test Instructions:', 'info');
+            addResult('1. Try clicking and dragging the "Drag Test Start" node', 'info');
+            addResult('2. Try dragging the "Drag Test Agent" node', 'info');
+            addResult('3. Try dragging the "Drag Test Complete" node', 'info');
+            addResult('4. Verify connections update in real-time during drag', 'info');
+            addResult('5. Nodes should move smoothly and stay where you drop them', 'info');
+        }
+        
+        // Auto-run tests on load
+        window.addEventListener('load', () => {
+            addResult('🏁 Final Drag Functionality Verification Started', 'info');
+            setTimeout(() => testBothFixes(), 500);
+            setTimeout(() => testPositionStructure(), 1000);
+        });
+    </script>
+</body>
+</html>

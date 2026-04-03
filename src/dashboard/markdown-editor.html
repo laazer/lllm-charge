@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM-Charge Markdown Editor</title>
+    <!-- Include marked.js for markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Include highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --background: #ffffff;
+            --surface: #f8fafc;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            
+            /* Liquid Glass */
+            --glass-background: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            --glass-blur: blur(4px);
+        }
+
+        .theme-dark {
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --glass-background: rgba(17, 25, 40, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.18);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .style-liquid-glass .dashboard-header {
+            background: var(--glass-background);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        .header-left {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .header-left h1 {
+            color: var(--text);
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .btn:hover { 
+            background: var(--border); 
+        }
+
+        .btn.primary {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .btn.primary:hover {
+            background: rgba(59, 130, 246, 0.8);
+        }
+
+        .btn.nav-back {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .btn.nav-back:hover {
+            background: rgba(59, 130, 246, 0.8);
+        }
+
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: calc(100vh - 80px);
+            gap: 1px;
+            background: var(--border);
+        }
+
+        .editor-pane, .preview-pane {
+            background: var(--background);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .pane-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .style-liquid-glass .pane-header {
+            background: var(--glass-background);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .pane-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .control-btn:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .markdown-editor {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            outline: none;
+            resize: none;
+            background: var(--background);
+            color: var(--text);
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            tab-size: 2;
+        }
+
+        .markdown-preview {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background: var(--background);
+            color: var(--text);
+        }
+
+        /* Markdown preview styles */
+        .markdown-preview h1, .markdown-preview h2, .markdown-preview h3,
+        .markdown-preview h4, .markdown-preview h5, .markdown-preview h6 {
+            color: var(--text);
+            margin: 1.5em 0 0.5em 0;
+            font-weight: 600;
+        }
+
+        .markdown-preview h1 {
+            font-size: 2rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .markdown-preview h2 {
+            font-size: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.25rem;
+        }
+
+        .markdown-preview h3 { font-size: 1.25rem; }
+        .markdown-preview h4 { font-size: 1.1rem; }
+        .markdown-preview h5 { font-size: 1rem; }
+        .markdown-preview h6 { font-size: 0.9rem; }
+
+        .markdown-preview p {
+            margin: 1em 0;
+            line-height: 1.7;
+        }
+
+        .markdown-preview blockquote {
+            margin: 1em 0;
+            padding: 0.5em 1em;
+            border-left: 4px solid var(--primary-color);
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 0 0.25rem 0.25rem 0;
+        }
+
+        .markdown-preview code {
+            background: var(--surface);
+            padding: 0.2em 0.4em;
+            border-radius: 0.25rem;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85em;
+            color: var(--error-color);
+        }
+
+        .markdown-preview pre {
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1em 0;
+            border: 1px solid var(--border);
+        }
+
+        .markdown-preview pre code {
+            background: none;
+            padding: 0;
+            color: var(--text);
+        }
+
+        .markdown-preview ul, .markdown-preview ol {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+
+        .markdown-preview li {
+            margin: 0.5em 0;
+        }
+
+        .markdown-preview table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .markdown-preview th, .markdown-preview td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .markdown-preview th {
+            background: var(--surface);
+            font-weight: 600;
+        }
+
+        .markdown-preview tr:nth-child(even) {
+            background: rgba(59, 130, 246, 0.02);
+        }
+
+        .markdown-preview a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .markdown-preview a:hover {
+            text-decoration: underline;
+        }
+
+        .markdown-preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin: 1em 0;
+        }
+
+        .markdown-preview hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-color), transparent);
+            margin: 2em 0;
+            border-radius: 1px;
+        }
+
+        /* Toolbar styles */
+        .toolbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .style-liquid-glass .toolbar {
+            background: var(--glass-background);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .toolbar-btn {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 0.25rem;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.8rem;
+            color: var(--text);
+        }
+
+        .toolbar-btn:hover {
+            background: var(--border);
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 1.5rem;
+            background: var(--border);
+            margin: 0 0.25rem;
+        }
+
+        .word-count {
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 1fr;
+            }
+            
+            .header-controls {
+                flex-wrap: wrap;
+                gap: 0.25rem;
+            }
+        }
+
+        /* Custom scrollbar */
+        .markdown-editor::-webkit-scrollbar,
+        .markdown-preview::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .markdown-editor::-webkit-scrollbar-track,
+        .markdown-preview::-webkit-scrollbar-track {
+            background: var(--surface);
+        }
+
+        .markdown-editor::-webkit-scrollbar-thumb,
+        .markdown-preview::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .markdown-editor::-webkit-scrollbar-thumb:hover,
+        .markdown-preview::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body class="theme-light">
+    <!-- Header with navigation and controls -->
+    <div class="dashboard-header">
+        <div class="header-left">
+            <h1>📝 Markdown Editor</h1>
+            <button class="btn nav-back" onclick="window.location.href='/'">
+                ← Back to Dashboard
+            </button>
+        </div>
+        <div class="header-controls">
+            <button class="btn" onclick="newDocument()">📄 New</button>
+            <button class="btn" onclick="saveDocument()">💾 Save</button>
+            <button class="btn" onclick="loadDocument()">📂 Open</button>
+            <button class="btn" onclick="exportDocument()">📤 Export</button>
+            <button class="btn" onclick="toggleLayout()">⚡ Layout</button>
+            <button class="btn theme-toggle" onclick="toggleTheme()">🌙 Dark</button>
+            <button class="btn style-toggle" onclick="toggleStyle()">✨ Liquid Glass</button>
+        </div>
+    </div>
+
+    <div class="editor-container" id="editorContainer">
+        <!-- Editor Pane -->
+        <div class="editor-pane">
+            <div class="pane-header">
+                <span>📝 Editor</span>
+                <div class="pane-controls">
+                    <button class="control-btn" onclick="insertText('**bold**')" title="Bold">🔲</button>
+                    <button class="control-btn" onclick="insertText('*italic*')" title="Italic">🔻</button>
+                    <button class="control-btn" onclick="insertText('`code`')" title="Code">💻</button>
+                    <button class="control-btn" onclick="insertText('[link](url)')" title="Link">🔗</button>
+                    <button class="control-btn" onclick="insertText('![image](url)')" title="Image">🖼️</button>
+                </div>
+            </div>
+            
+            <div class="toolbar">
+                <button class="toolbar-btn" onclick="insertText('# ')">H1</button>
+                <button class="toolbar-btn" onclick="insertText('## ')">H2</button>
+                <button class="toolbar-btn" onclick="insertText('### ')">H3</button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" onclick="insertText('- ')">• List</button>
+                <button class="toolbar-btn" onclick="insertText('1. ')">1. List</button>
+                <button class="toolbar-btn" onclick="insertText('> ')">Quote</button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" onclick="insertText('---\n')">HR</button>
+                <button class="toolbar-btn" onclick="insertTable()">Table</button>
+                <div class="word-count" id="wordCount">0 words</div>
+            </div>
+            
+            <textarea 
+                class="markdown-editor" 
+                id="markdownEditor" 
+                placeholder="Start typing your markdown here...
+
+# Welcome to the Markdown Editor! 🎉
+
+This is a **beautiful** markdown editor with *live preview*.
+
+## Features
+- Real-time preview
+- Syntax highlighting  
+- Beautiful themes
+- Export functionality
+- And much more!
+
+Try typing some markdown and watch the preview update instantly!"
+                oninput="updatePreview()"
+                onscroll="syncScroll('editor')"
+            ></textarea>
+        </div>
+
+        <!-- Preview Pane -->
+        <div class="preview-pane">
+            <div class="pane-header">
+                <span>👁️ Preview</span>
+                <div class="pane-controls">
+                    <button class="control-btn" onclick="copyHtml()" title="Copy HTML">📋</button>
+                    <button class="control-btn" onclick="printPreview()" title="Print">🖨️</button>
+                    <button class="control-btn" onclick="fullscreenPreview()" title="Fullscreen">⛶</button>
+                </div>
+            </div>
+            
+            <div 
+                class="markdown-preview" 
+                id="markdownPreview"
+                onscroll="syncScroll('preview')"
+            >
+                <!-- Preview content will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLayout = 'split'; // split, editor-only, preview-only
+        let isScrollSyncing = false;
+
+        // Initialize the editor
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePreview();
+            loadPreferences();
+            
+            // Auto-save functionality
+            setInterval(() => {
+                const content = document.getElementById('markdownEditor').value;
+                if (content.trim()) {
+                    localStorage.setItem('markdown-editor-autosave', content);
+                }
+            }, 30000); // Auto-save every 30 seconds
+            
+            // Load auto-saved content
+            const autosaved = localStorage.getItem('markdown-editor-autosave');
+            if (autosaved && autosaved.trim()) {
+                const editor = document.getElementById('markdownEditor');
+                if (!editor.value.trim()) {
+                    editor.value = autosaved;
+                    updatePreview();
+                }
+            }
+        });
+
+        function updatePreview() {
+            const markdown = document.getElementById('markdownEditor').value;
+            const preview = document.getElementById('markdownPreview');
+            
+            // Configure marked options
+            marked.setOptions({
+                highlight: function(code, lang) {
+                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                    return hljs.highlight(code, { language }).value;
+                },
+                langPrefix: 'hljs language-',
+                breaks: true,
+                gfm: true
+            });
+            
+            // Render markdown
+            preview.innerHTML = marked.parse(markdown);
+            
+            // Update word count
+            updateWordCount(markdown);
+        }
+
+        function updateWordCount(text) {
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const chars = text.length;
+            document.getElementById('wordCount').textContent = `${words} words, ${chars} chars`;
+        }
+
+        function insertText(text) {
+            const editor = document.getElementById('markdownEditor');
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const before = editor.value.substring(0, start);
+            const after = editor.value.substring(end);
+            
+            editor.value = before + text + after;
+            editor.focus();
+            editor.setSelectionRange(start + text.length, start + text.length);
+            updatePreview();
+        }
+
+        function insertTable() {
+            const table = `
+| Header 1 | Header 2 | Header 3 |
+|----------|----------|----------|
+| Cell 1   | Cell 2   | Cell 3   |
+| Cell 4   | Cell 5   | Cell 6   |
+`;
+            insertText(table);
+        }
+
+        function syncScroll(source) {
+            if (isScrollSyncing) return;
+            isScrollSyncing = true;
+            
+            const editor = document.getElementById('markdownEditor');
+            const preview = document.getElementById('markdownPreview');
+            
+            if (source === 'editor') {
+                const scrollPercentage = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
+                preview.scrollTop = scrollPercentage * (preview.scrollHeight - preview.clientHeight);
+            } else {
+                const scrollPercentage = preview.scrollTop / (preview.scrollHeight - preview.clientHeight);
+                editor.scrollTop = scrollPercentage * (editor.scrollHeight - editor.clientHeight);
+            }
+            
+            setTimeout(() => { isScrollSyncing = false; }, 50);
+        }
+
+        function toggleLayout() {
+            const container = document.getElementById('editorContainer');
+            const layouts = ['split', 'editor-only', 'preview-only'];
+            const currentIndex = layouts.indexOf(currentLayout);
+            currentLayout = layouts[(currentIndex + 1) % layouts.length];
+            
+            switch(currentLayout) {
+                case 'split':
+                    container.style.gridTemplateColumns = '1fr 1fr';
+                    document.querySelector('.editor-pane').style.display = 'flex';
+                    document.querySelector('.preview-pane').style.display = 'flex';
+                    break;
+                case 'editor-only':
+                    container.style.gridTemplateColumns = '1fr';
+                    document.querySelector('.editor-pane').style.display = 'flex';
+                    document.querySelector('.preview-pane').style.display = 'none';
+                    break;
+                case 'preview-only':
+                    container.style.gridTemplateColumns = '1fr';
+                    document.querySelector('.editor-pane').style.display = 'none';
+                    document.querySelector('.preview-pane').style.display = 'flex';
+                    break;
+            }
+        }
+
+        function newDocument() {
+            if (document.getElementById('markdownEditor').value.trim()) {
+                if (!confirm('Are you sure you want to create a new document? Unsaved changes will be lost.')) {
+                    return;
+                }
+            }
+            document.getElementById('markdownEditor').value = '';
+            updatePreview();
+            showNotification('📄 New document created', 'info');
+        }
+
+        function saveDocument() {
+            const content = document.getElementById('markdownEditor').value;
+            const blob = new Blob([content], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `document-${new Date().toISOString().slice(0, 10)}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showNotification('💾 Document saved successfully!', 'success');
+        }
+
+        function loadDocument() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.md,.txt';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('markdownEditor').value = e.target.result;
+                        updatePreview();
+                        showNotification('📂 Document loaded successfully!', 'success');
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+
+        function exportDocument() {
+            const preview = document.getElementById('markdownPreview');
+            const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Exported Document</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+        h1, h2, h3, h4, h5, h6 { color: #1a202c; margin: 1.5em 0 0.5em 0; }
+        h1 { font-size: 2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; }
+        h2 { font-size: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25rem; }
+        code { background: #f7fafc; padding: 0.2em 0.4em; border-radius: 0.25rem; color: #e53e3e; }
+        pre { background: #f7fafc; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+        blockquote { border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.05); padding: 0.5em 1em; margin: 1em 0; }
+        table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f7fafc; font-weight: 600; }
+    </style>
+</head>
+<body>
+${preview.innerHTML}
+</body>
+</html>`;
+            
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `document-${new Date().toISOString().slice(0, 10)}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showNotification('📤 Document exported as HTML!', 'success');
+        }
+
+        function copyHtml() {
+            const preview = document.getElementById('markdownPreview');
+            navigator.clipboard.writeText(preview.innerHTML).then(() => {
+                showNotification('📋 HTML copied to clipboard!', 'success');
+            });
+        }
+
+        function printPreview() {
+            const preview = document.getElementById('markdownPreview');
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Print Preview</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 1in; line-height: 1.6; }
+                        h1, h2, h3, h4, h5, h6 { color: #000; page-break-after: avoid; }
+                        pre, code { font-size: 0.9em; }
+                        @page { margin: 1in; }
+                    </style>
+                </head>
+                <body>${preview.innerHTML}</body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function fullscreenPreview() {
+            const preview = document.querySelector('.preview-pane');
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                preview.requestFullscreen();
+            }
+        }
+
+        // Theme and style management functions
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.classList.contains('theme-dark');
+            
+            if (isDark) {
+                body.classList.remove('theme-dark');
+                document.querySelector('.theme-toggle').textContent = '🌙 Dark';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('theme-dark');
+                document.querySelector('.theme-toggle').textContent = '☀️ Light';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        function toggleStyle() {
+            const body = document.body;
+            const isLiquid = body.classList.contains('style-liquid-glass');
+            
+            if (isLiquid) {
+                body.classList.remove('style-liquid-glass');
+                document.querySelector('.style-toggle').textContent = '✨ Liquid Glass';
+                localStorage.setItem('style', 'standard');
+            } else {
+                body.classList.add('style-liquid-glass');
+                document.querySelector('.style-toggle').textContent = '💎 Standard';
+                localStorage.setItem('style', 'liquid-glass');
+            }
+        }
+
+        // Load saved preferences
+        function loadPreferences() {
+            const savedTheme = localStorage.getItem('theme');
+            const savedStyle = localStorage.getItem('style');
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('theme-dark');
+                document.querySelector('.theme-toggle').textContent = '☀️ Light';
+            }
+            
+            if (savedStyle === 'liquid-glass') {
+                document.body.classList.add('style-liquid-glass');
+                document.querySelector('.style-toggle').textContent = '💎 Standard';
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                border-radius: 0.5rem;
+                color: white;
+                font-weight: 500;
+                z-index: 1000;
+                animation: slideIn 0.3s ease-out;
+                ${type === 'success' ? 'background: #10b981;' : ''}
+                ${type === 'error' ? 'background: #ef4444;' : ''}
+                ${type === 'warning' ? 'background: #f59e0b;' : ''}
+                ${type === 'info' ? 'background: #3b82f6;' : ''}
+            `;
+            notification.textContent = message;
+            
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+                style.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

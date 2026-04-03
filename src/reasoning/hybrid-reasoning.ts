@@ -6,6 +6,7 @@ import { RLMEngine } from './rlm-engine'
 import { LocalLLMRouter } from './local-llm-router'
 import { CommonCommandHandler } from '@/utils/common-commands'
 import { LLMRequest, LLMResponse, ContextPackage, ReasoningSession } from '@/core/types'
+import { SkillEnrichmentProvider, SkillUsageSummary } from './skill-enrichment-provider'
 
 export interface ReasoningRequest {
   query: string
@@ -26,6 +27,8 @@ export interface ReasoningResponse {
   tokensUsed: number
   stepsExecuted: number
   confidence: number
+  executionTimeMs?: number
+  skillsUsed?: SkillUsageSummary[]
 }
 
 export class HybridReasoning {
@@ -34,15 +37,18 @@ export class HybridReasoning {
   constructor(
     private intelligence: UnifiedIntelligence,
     private rlmEngine: RLMEngine,
-    private router: LocalLLMRouter
+    private router: LocalLLMRouter,
+    private skillProvider?: SkillEnrichmentProvider
   ) {
     this.commandHandler = new CommonCommandHandler()
   }
 
   async processQuery(request: ReasoningRequest, cwd?: string): Promise<ReasoningResponse> {
+    const startTime = Date.now()
+
     // First, check if this is a simple command that can be handled directly
     const commandResult = await this.commandHandler.handleCommand(request.query, cwd)
-    
+
     if (commandResult) {
       return {
         answer: commandResult.output,
@@ -51,20 +57,24 @@ export class HybridReasoning {
         cost: 0,
         tokensUsed: 0,
         stepsExecuted: 1,
-        confidence: commandResult.success ? 1.0 : 0.5
+        confidence: commandResult.success ? 1.0 : 0.5,
+        executionTimeMs: Date.now() - startTime,
+        skillsUsed: [],
       }
     }
-    const startTime = Date.now()
-    
+
     // Step 1: Build rich context using unified intelligence
     const contextPackage = await this.buildIntelligentContext(request)
-    
-    // Step 2: Determine reasoning strategy
+
+    // Step 1.5: Enrich context with skills
+    const skillUsageSummaries = await this.enrichContextWithSkills(request.query, contextPackage)
+
+    // Step 2: Determine reasoning strategy (skills may influence this)
     const strategy = this.selectReasoningStrategy(request, contextPackage)
-    
+
     // Step 3: Execute reasoning
     let response: ReasoningResponse
-    
+
     switch (strategy.type) {
       case 'direct-local':
         response = await this.executeDirectLocal(request, contextPackage)
@@ -81,11 +91,15 @@ export class HybridReasoning {
       default:
         throw new Error(`Unknown strategy: ${strategy.type}`)
     }
-    
+
     // Step 4: Update memory with learnings
     await this.updateMemoryGraph(request, response)
-    
+
     response.context = contextPackage
+    response.executionTimeMs = Date.now() - startTime
+    response.skillsUsed = skillUsageSummaries
+    response.cost += skillUsageSummaries.reduce((sum, s) => sum + s.cost, 0)
+
     return response
   }
 
@@ -95,10 +109,22 @@ export class HybridReasoning {
   }
 
   private selectReasoningStrategy(request: ReasoningRequest, context: ContextPackage): ReasoningStrategy {
+    // If a skill provided a high-confidence direct answer, use the cheapest strategy
+    const hasDirectAnswer = context.skillEnrichments?.some(
+      enrichment => enrichment.resultType === 'direct-answer' && enrichment.confidence >= 0.8
+    )
+    if (hasDirectAnswer) {
+      return {
+        type: 'direct-local',
+        confidence: 0.95,
+        reason: 'High-confidence skill provided a direct answer',
+      }
+    }
+
     const complexity = request.complexity || this.assessComplexity(request.query, context)
     const requiresReasoning = request.requiresReasoning ?? this.needsReasoning(request.query)
     const contextSize = context.estimatedTokens
-    
+
     // Simple queries with good context -> Direct local
     if (complexity === 'simple' && contextSize < 2000 && !requiresReasoning) {
       return {
@@ -255,7 +281,14 @@ export class HybridReasoning {
       ).join('\n')
       sections.push(`Related Knowledge:\n${memories}`)
     }
-    
+
+    if (context.skillEnrichments && context.skillEnrichments.length > 0) {
+      const skillContext = context.skillEnrichments.map(enrichment =>
+        `- [${enrichment.skillName}] (confidence: ${enrichment.confidence.toFixed(2)}): ${enrichment.content.slice(0, 500)}`
+      ).join('\n')
+      sections.push(`Skill-Provided Context:\n${skillContext}`)
+    }
+
     const contextText = sections.length > 0 ? sections.join('\n\n') : 'No specific context available.'
     
     return `Context:\n${contextText}\n\nQuery: ${query}\n\nPlease provide a comprehensive answer based on the context provided.`
@@ -317,6 +350,42 @@ Use this context to understand the codebase structure and relationships when ans
 
   private estimateTokens(text: string): number {
     return Math.ceil(text.length / 4)
+  }
+
+  private async enrichContextWithSkills(
+    query: string,
+    contextPackage: ContextPackage
+  ): Promise<SkillUsageSummary[]> {
+    if (!this.skillProvider) return []
+
+    try {
+      const enrichments = await this.skillProvider.enrichQuery(query, contextPackage)
+      const relevantEnrichments = enrichments.filter(enrichment => enrichment.confidence >= 0.3)
+
+      contextPackage.skillEnrichments = relevantEnrichments.map(enrichment => ({
+        skillId: enrichment.skillId,
+        skillName: enrichment.skillName,
+        content: enrichment.content,
+        resultType: enrichment.resultType,
+        confidence: enrichment.confidence,
+      }))
+
+      const additionalTokens = relevantEnrichments.reduce(
+        (sum, enrichment) => sum + Math.ceil(enrichment.content.length / 4), 0
+      )
+      contextPackage.estimatedTokens += additionalTokens
+
+      return relevantEnrichments.map(enrichment => ({
+        skillId: enrichment.skillId,
+        skillName: enrichment.skillName,
+        executionTimeMs: enrichment.executionTimeMs,
+        resultType: enrichment.resultType,
+        cost: enrichment.cost,
+      }))
+    } catch (error) {
+      console.warn('Skill enrichment failed, continuing without skills:', error)
+      return []
+    }
   }
 
   private async updateMemoryGraph(request: ReasoningRequest, response: ReasoningResponse): Promise<void> {

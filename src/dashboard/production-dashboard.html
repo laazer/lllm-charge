@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM-Charge Dashboard - Production</title>
+    
+    <!-- React, Router, Query CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-router-dom@6/dist/umd/react-router-dom.development.js"></script>
+    <script crossorigin src="https://unpkg.com/@tanstack/react-query@4/build/umd/index.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #3b82f6; --success: #10b981; --warning: #f59e0b; --error: #ef4444;
+            --bg: #ffffff; --text: #1f2937; --text-secondary: #64748b; --border: #e2e8f0;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+        .logo { font-size: 1.5rem; font-weight: 700; color: var(--primary); text-decoration: none; }
+        .nav { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .nav-link { text-decoration: none; padding: 0.75rem 1rem; border-bottom: 2px solid transparent; transition: all 0.2s ease; color: var(--text); }
+        .nav-link:hover, .nav-link.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .section { min-height: 400px; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .status-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .status-card h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
+        .status-card-value { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--success); }
+        .data-list { max-height: 600px; overflow-y: auto; }
+        .data-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .data-item:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
+        .data-item h4 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
+        .data-item p { color: var(--text-secondary); font-size: 0.875rem; line-height: 1.5; }
+        .loading { text-align: center; padding: 2rem; color: var(--text-secondary); }
+        .error { text-align: center; padding: 2rem; color: var(--error); }
+        .section-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: var(--text); }
+        .refresh-btn { background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.875rem; }
+        .refresh-btn:hover { background: #2563eb; }
+        .fresh-indicator { color: var(--success); font-size: 0.75rem; margin-left: 0.5rem; }
+        .stale-indicator { color: var(--warning); font-size: 0.75rem; margin-left: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { BrowserRouter, Routes, Route, Link, useLocation } = window.ReactRouterDOM;
+        const { QueryClient, QueryClientProvider, useQuery } = window.ReactQuery;
+        
+        // Create React Query client with optimized settings
+        const queryClient = new QueryClient({
+            defaultOptions: {
+                queries: {
+                    staleTime: 30000, // 30 seconds
+                    cacheTime: 60000, // 1 minute
+                    refetchOnWindowFocus: true,
+                    refetchInterval: 60000, // Auto-refresh every minute
+                },
+            },
+        });
+
+        // API functions
+        const fetchData = async (endpoint) => {
+            console.log(`Fetching ${endpoint}...`);
+            const response = await fetch(`/api/${endpoint}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${endpoint}: ${response.status}`);
+            }
+            const result = await response.json();
+            console.log(`${endpoint} loaded:`, result.length, 'items');
+            return result;
+        };
+
+        // Custom hooks using React Query
+        const useSpecs = () => useQuery(['specs'], () => fetchData('specs'));
+        const useProjects = () => useQuery(['projects'], () => fetchData('projects'));
+        const useAgents = () => useQuery(['agents'], () => fetchData('agents'));
+
+        // Navigation component
+        const Navigation = () => {
+            const location = useLocation();
+            
+            const navItems = [
+                { path: '/', label: '📊 Overview' },
+                { path: '/specs', label: '📋 Specs' },
+                { path: '/projects', label: '📊 Projects' },
+                { path: '/agents', label: '🤖 Agents' }
+            ];
+
+            return (
+                <nav className="nav">
+                    {navItems.map(item => (
+                        <Link
+                            key={item.path}
+                            to={item.path}
+                            className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
+                    <button 
+                        className="refresh-btn" 
+                        onClick={() => queryClient.invalidateQueries()}
+                    >
+                        🔄 Refresh All
+                    </button>
+                </nav>
+            );
+        };
+
+        // Overview Page Component
+        const Overview = () => {
+            const specs = useSpecs();
+            const projects = useProjects();
+            const agents = useAgents();
+
+            return (
+                <div className="section">
+                    <h1 className="section-title">📊 Overview</h1>
+                    <div className="status-grid">
+                        <div className="status-card">
+                            <h3>Total Specifications</h3>
+                            <div className="status-card-value">
+                                {specs.isLoading ? '...' : specs.data?.length || 0}
+                                {specs.isFetching && <span className="fresh-indicator">🔄</span>}
+                            </div>
+                        </div>
+                        <div className="status-card">
+                            <h3>Projects</h3>
+                            <div className="status-card-value">
+                                {projects.isLoading ? '...' : projects.data?.length || 0}
+                                {projects.isFetching && <span className="fresh-indicator">🔄</span>}
+                            </div>
+                        </div>
+                        <div className="status-card">
+                            <h3>Agents</h3>
+                            <div className="status-card-value">
+                                {agents.isLoading ? '...' : agents.data?.length || 0}
+                                {agents.isFetching && <span className="fresh-indicator">🔄</span>}
+                            </div>
+                        </div>
+                        <div className="status-card">
+                            <h3>Server Status</h3>
+                            <div className="status-card-value">✅ Online</div>
+                        </div>
+                    </div>
+                    
+                    {(specs.isStale || projects.isStale || agents.isStale) && (
+                        <div style={{textAlign: 'center', color: 'var(--warning)'}}>
+                            <span className="stale-indicator">⚠️ Some data may be stale</span>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Specs Page Component
+        const Specs = () => {
+            const { data, isLoading, error, refetch, isFetching, isStale } = useSpecs();
+
+            if (isLoading) return <div className="loading">Loading specifications...</div>;
+            if (error) return <div className="error">Error loading specs: {error.message}</div>;
+
+            return (
+                <div className="section">
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <h1 className="section-title">
+                            📋 Specifications ({data?.length || 0})
+                            {isFetching && <span className="fresh-indicator">🔄</span>}
+                            {isStale && <span className="stale-indicator">⚠️</span>}
+                        </h1>
+                        <button className="refresh-btn" onClick={() => refetch()}>
+                            🔄 Refresh Specs
+                        </button>
+                    </div>
+                    <div className="data-list">
+                        {!data || data.length === 0 ? (
+                            <div className="loading">No specifications found</div>
+                        ) : (
+                            data.map(spec => (
+                                <div key={spec.id} className="data-item">
+                                    <h4>{spec.title}</h4>
+                                    <p>{spec.description ? 
+                                        (spec.description.length > 200 ? 
+                                            spec.description.substring(0, 200) + '...' : 
+                                            spec.description) : 
+                                        'No description'
+                                    }</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Projects Page Component
+        const Projects = () => {
+            const { data, isLoading, error, refetch, isFetching, isStale } = useProjects();
+
+            if (isLoading) return <div className="loading">Loading projects...</div>;
+            if (error) return <div className="error">Error loading projects: {error.message}</div>;
+
+            return (
+                <div className="section">
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <h1 className="section-title">
+                            📊 Projects ({data?.length || 0})
+                            {isFetching && <span className="fresh-indicator">🔄</span>}
+                            {isStale && <span className="stale-indicator">⚠️</span>}
+                        </h1>
+                        <button className="refresh-btn" onClick={() => refetch()}>
+                            🔄 Refresh Projects
+                        </button>
+                    </div>
+                    <div className="data-list">
+                        {!data || data.length === 0 ? (
+                            <div className="loading">No projects found</div>
+                        ) : (
+                            data.map(project => (
+                                <div key={project.id} className="data-item">
+                                    <h4>{project.name}</h4>
+                                    <p>{project.description || 'No description'}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Agents Page Component
+        const Agents = () => {
+            const { data, isLoading, error, refetch, isFetching, isStale } = useAgents();
+
+            if (isLoading) return <div className="loading">Loading agents...</div>;
+            if (error) return <div className="error">Error loading agents: {error.message}</div>;
+
+            return (
+                <div className="section">
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <h1 className="section-title">
+                            🤖 Agents ({data?.length || 0})
+                            {isFetching && <span className="fresh-indicator">🔄</span>}
+                            {isStale && <span className="stale-indicator">⚠️</span>}
+                        </h1>
+                        <button className="refresh-btn" onClick={() => refetch()}>
+                            🔄 Refresh Agents
+                        </button>
+                    </div>
+                    <div className="data-list">
+                        {!data || data.length === 0 ? (
+                            <div className="loading">No agents found</div>
+                        ) : (
+                            data.map(agent => (
+                                <div key={agent.id} className="data-item">
+                                    <h4>{agent.name}</h4>
+                                    <p>{agent.description || 'No description'}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App Component
+        const App = () => {
+            return (
+                <QueryClientProvider client={queryClient}>
+                    <BrowserRouter>
+                        <div className="container">
+                            <div className="header">
+                                <Link to="/" className="logo">🚀 LLM-Charge Dashboard</Link>
+                                <div>React Query • Production Ready</div>
+                            </div>
+
+                            <Navigation />
+
+                            <Routes>
+                                <Route path="/" element={<Overview />} />
+                                <Route path="/specs" element={<Specs />} />
+                                <Route path="/projects" element={<Projects />} />
+                                <Route path="/agents" element={<Agents />} />
+                            </Routes>
+                        </div>
+                    </BrowserRouter>
+                </QueryClientProvider>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+        console.log('✅ Production React Dashboard with Query Mounted Successfully');
+    </script>
+</body>
+</html>

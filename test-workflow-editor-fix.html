@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workflow Editor Fix Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .test-results { margin: 20px 0; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Workflow Editor Fix Verification</h1>
+    <p>Testing that the 500 Internal Server Error has been resolved and the workflow editor is functioning properly.</p>
+    
+    <div id="test-results" class="test-results"></div>
+    
+    <button onclick="testStaticFileServing()">Test Static File Serving</button>
+    <button onclick="testAPIConnectivity()">Test API Connectivity</button>
+    <button onclick="testWorkflowData()">Test Workflow Data</button>
+    <button onclick="testWorkflowEditor()">Open Workflow Editor</button>
+    
+    <script>
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `${new Date().toLocaleTimeString()}: ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function testStaticFileServing() {
+            addResult('🧪 Testing static file serving...', 'info');
+            
+            try {
+                const response = await fetch('/workflow-editor.html');
+                if (response.ok) {
+                    addResult('✅ Static file serving working - workflow-editor.html returns 200 OK', 'success');
+                } else {
+                    addResult(`❌ Static file serving failed - returned ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Static file serving error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAPIConnectivity() {
+            addResult('🧪 Testing API connectivity...', 'info');
+            
+            try {
+                const response = await fetch('/api/workflows');
+                if (response.ok) {
+                    const workflows = await response.json();
+                    addResult(`✅ API connectivity working - found ${workflows.length} workflows`, 'success');
+                } else {
+                    addResult(`❌ API connectivity failed - returned ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ API connectivity error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testWorkflowData() {
+            addResult('🧪 Testing workflow data retrieval...', 'info');
+            
+            try {
+                // Test with the new workflow that has nodes
+                const workflowId = 'workflow-1774902478149-lmj9w5cte';
+                const response = await fetch(`/api/workflows/${workflowId}`);
+                
+                if (response.ok) {
+                    const workflow = await response.json();
+                    addResult(`✅ Workflow data retrieved - "${workflow.name}" with ${workflow.nodes.length} nodes`, 'success');
+                    
+                    if (workflow.nodes.length > 0) {
+                        addResult(`📋 First node: "${workflow.nodes[0].name}" (${workflow.nodes[0].type})`, 'info');
+                    }
+                } else {
+                    addResult(`❌ Workflow data retrieval failed - returned ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Workflow data error: ${error.message}`, 'error');
+            }
+        }
+        
+        function testWorkflowEditor() {
+            addResult('🚀 Opening workflow editor with test workflow...', 'info');
+            
+            // Open the workflow editor with the test workflow
+            const workflowId = 'workflow-1774902478149-lmj9w5cte';
+            const editorUrl = `/workflow-editor.html?id=${workflowId}`;
+            
+            window.open(editorUrl, '_blank');
+            addResult(`✅ Workflow editor opened: ${editorUrl}`, 'success');
+            addResult('👀 Please check if nodes are displaying correctly in the new tab', 'info');
+        }
+        
+        // Auto-run basic tests on load
+        window.addEventListener('load', () => {
+            addResult('🏁 Workflow Editor Fix Verification Started', 'info');
+            setTimeout(() => testStaticFileServing(), 500);
+            setTimeout(() => testAPIConnectivity(), 1000);
+            setTimeout(() => testWorkflowData(), 1500);
+        });
+    </script>
+</body>
+</html>

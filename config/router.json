@@ -1,0 +1,40 @@
+{
+  "providers": {
+    "local": {
+      "lm-studio": {
+        "endpoint": "http://localhost:1234",
+        "models": ["local-model", "llama-3.2-3b-instruct", "qwen2.5-coder-7b-instruct"],
+        "costPerToken": 0,
+        "maxConcurrency": 4,
+        "default": true
+      },
+      "ollama": {
+        "endpoint": "http://localhost:11434", 
+        "models": ["llama2", "codellama", "mistral"],
+        "costPerToken": 0,
+        "maxConcurrency": 4
+      }
+    },
+    "cloud": {
+      "openai": {
+        "endpoint": "https://api.openai.com/v1",
+        "models": ["gpt-3.5-turbo", "gpt-4"],
+        "costPerToken": 0.002,
+        "rateLimit": 3000
+      },
+      "anthropic": {
+        "endpoint": "https://api.anthropic.com/v1",
+        "models": ["claude-3-haiku", "claude-3-sonnet"],
+        "costPerToken": 0.00025,
+        "rateLimit": 4000
+      }
+    }
+  },
+  "routing": {
+    "defaultStrategy": "cost-optimized",
+    "costThreshold": 0.10,
+    "qualityThreshold": 0.85,
+    "timeoutMs": 30000,
+    "retryAttempts": 3
+  }
+}

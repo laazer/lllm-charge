@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM-Charge Dashboard - Working Version</title>
+    
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --background: #ffffff;
+            --text: #1f2937;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover,
+        .nav-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .section {
+            display: none;
+            min-height: 400px;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .status-card h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .status-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .data-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .data-item {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .data-item h4 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .data-item p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🚀 LLM-Charge Dashboard</div>
+            <div>Real Data • Working Version</div>
+        </div>
+
+        <nav class="nav">
+            <button class="nav-btn active" onclick="showSection('overview')">📊 Overview</button>
+            <button class="nav-btn" onclick="showSection('specs')">📋 Specs</button>
+            <button class="nav-btn" onclick="showSection('projects')">📊 Projects</button>
+            <button class="nav-btn" onclick="showSection('agents')">🤖 Agents</button>
+        </nav>
+
+        <div id="overview" class="section active">
+            <h2>📊 Overview</h2>
+            <div class="status-grid">
+                <div class="status-card">
+                    <h3>Total Specifications</h3>
+                    <div class="status-card-value" id="specs-count">-</div>
+                </div>
+                <div class="status-card">
+                    <h3>Projects</h3>
+                    <div class="status-card-value" id="projects-count">-</div>
+                </div>
+                <div class="status-card">
+                    <h3>Agents</h3>
+                    <div class="status-card-value" id="agents-count">-</div>
+                </div>
+                <div class="status-card">
+                    <h3>Server Status</h3>
+                    <div class="status-card-value" style="color: var(--success-color);">✅ Online</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="specs" class="section">
+            <h2>📋 Specifications</h2>
+            <div id="specs-content" class="data-list">
+                <div class="loading">Loading specifications...</div>
+            </div>
+        </div>
+
+        <div id="projects" class="section">
+            <h2>📊 Projects</h2>
+            <div id="projects-content" class="data-list">
+                <div class="loading">Loading projects...</div>
+            </div>
+        </div>
+
+        <div id="agents" class="section">
+            <h2>🤖 Agents</h2>
+            <div id="agents-content" class="data-list">
+                <div class="loading">Loading agents...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🚀 Simple Dashboard Loading...');
+
+        // Simple, clean global functions
+        function showSection(sectionName) {
+            console.log('Switching to section:', sectionName);
+            
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show target section
+            const target = document.getElementById(sectionName);
+            if (target) {
+                target.classList.add('active');
+            }
+            
+            // Update navigation
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Load data for section
+            loadSectionData(sectionName);
+        }
+
+        async function loadSectionData(sectionName) {
+            console.log('Loading data for section:', sectionName);
+            
+            try {
+                switch(sectionName) {
+                    case 'specs':
+                        await loadSpecs();
+                        break;
+                    case 'projects':
+                        await loadProjects();
+                        break;
+                    case 'agents':
+                        await loadAgents();
+                        break;
+                }
+            } catch (error) {
+                console.error('Failed to load section data:', error);
+            }
+        }
+
+        async function loadSpecs() {
+            console.log('Loading specs...');
+            try {
+                const response = await fetch('/api/specs');
+                if (response.ok) {
+                    const specs = await response.json();
+                    document.getElementById('specs-count').textContent = specs.length;
+                    
+                    const container = document.getElementById('specs-content');
+                    if (specs.length === 0) {
+                        container.innerHTML = '<div class="loading">No specifications found</div>';
+                        return;
+                    }
+                    
+                    container.innerHTML = specs.map(spec => `
+                        <div class="data-item">
+                            <h4>${spec.title}</h4>
+                            <p>${spec.description ? spec.description.substring(0, 200) + '...' : 'No description'}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load specs:', error);
+                document.getElementById('specs-content').innerHTML = '<div class="loading">Failed to load specifications</div>';
+            }
+        }
+
+        async function loadProjects() {
+            console.log('Loading projects...');
+            try {
+                const response = await fetch('/api/projects');
+                if (response.ok) {
+                    const projects = await response.json();
+                    document.getElementById('projects-count').textContent = projects.length;
+                    
+                    const container = document.getElementById('projects-content');
+                    if (projects.length === 0) {
+                        container.innerHTML = '<div class="loading">No projects found</div>';
+                        return;
+                    }
+                    
+                    container.innerHTML = projects.map(project => `
+                        <div class="data-item">
+                            <h4>${project.name}</h4>
+                            <p>${project.description || 'No description'}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load projects:', error);
+                document.getElementById('projects-content').innerHTML = '<div class="loading">Failed to load projects</div>';
+            }
+        }
+
+        async function loadAgents() {
+            console.log('Loading agents...');
+            try {
+                const response = await fetch('/api/agents');
+                if (response.ok) {
+                    const agents = await response.json();
+                    document.getElementById('agents-count').textContent = agents.length;
+                    
+                    const container = document.getElementById('agents-content');
+                    if (agents.length === 0) {
+                        container.innerHTML = '<div class="loading">No agents found</div>';
+                        return;
+                    }
+                    
+                    container.innerHTML = agents.map(agent => `
+                        <div class="data-item">
+                            <h4>${agent.name}</h4>
+                            <p>${agent.description || 'No description'}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load agents:', error);
+                document.getElementById('agents-content').innerHTML = '<div class="loading">Failed to load agents</div>';
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Simple Dashboard Initialized');
+            
+            // Load initial overview data
+            loadSpecs();
+            loadProjects(); 
+            loadAgents();
+        });
+    </script>
+</body>
+</html>

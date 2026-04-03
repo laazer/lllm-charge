@@ -121,3 +121,27 @@ out/
 .docusaurus
 
 .svelte-kit
+
+### Python ###
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+.eggs/
+*.egg
+
+### Vite ###
+.vite/
+
+### SQLite Databases ###
+*.db
+*.sqlite
+*.sqlite3
+
+### Blender Pipeline Outputs ###
+renders/
+snapshots/
+
+### Runtime Data ###
+data/

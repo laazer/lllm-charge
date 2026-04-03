@@ -9,9 +9,9 @@ export class CodeGraphEngine {
   private db: Database
   private parser: TreeSitter.Parser
   private languages: Map<string, TreeSitter.Language>
-  private projectPath: string
+  private projectPath!: string
 
-  constructor(private config: IntelligenceConfig) {
+  constructor(private config: any) {
     this.languages = new Map()
   }
 

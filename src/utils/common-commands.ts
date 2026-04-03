@@ -477,7 +477,7 @@ export class CommonCommandHandler {
           output: `Created file: ${name}`,
           command: `touch ${name}`,
           executionTime: 0,
-      cost: 0
+          cost: 0
         }
       } else {
         await fs.mkdir(fullPath, { recursive: true })
@@ -486,7 +486,7 @@ export class CommonCommandHandler {
           output: `Created directory: ${name}`,
           command: `mkdir ${name}`,
           executionTime: 0,
-      cost: 0
+          cost: 0
         }
       }
     } catch (error: any) {
@@ -507,7 +507,7 @@ export class CommonCommandHandler {
           output: `Deleted directory: ${name}`,
           command: `rm -rf ${name}`,
           executionTime: 0,
-      cost: 0
+          cost: 0
         }
       } else {
         await fs.unlink(fullPath)
@@ -516,7 +516,7 @@ export class CommonCommandHandler {
           output: `Deleted file: ${name}`,
           command: `rm ${name}`,
           executionTime: 0,
-      cost: 0
+          cost: 0
         }
       }
     } catch (error: any) {
@@ -538,7 +538,7 @@ export class CommonCommandHandler {
         output: `Killed process on port ${port}`,
         command: `kill port ${port}`,
         executionTime: 0,
-      cost: 0
+        cost: 0
       }
     } catch (error) {
       return {
@@ -546,7 +546,7 @@ export class CommonCommandHandler {
         output: `No process found running on port ${port}`,
         command: `kill port ${port}`,
         executionTime: 0,
-      cost: 0
+        cost: 0
       }
     }
   }
@@ -560,7 +560,7 @@ export class CommonCommandHandler {
         output: result,
         command: `lsof -i:${port}`,
         executionTime: 0,
-      cost: 0
+        cost: 0
       }
     } catch (error) {
       return {
@@ -568,7 +568,7 @@ export class CommonCommandHandler {
         output: `No process running on port ${port}`,
         command: `lsof -i:${port}`,
         executionTime: 0,
-      cost: 0
+        cost: 0
       }
     }
   }
@@ -750,7 +750,7 @@ export class CommonCommandHandler {
         output: result || 'No matches found',
         command: fullMatch,
         executionTime: 0,
-      cost: 0
+        cost: 0
       }
     } catch (error) {
       return {
@@ -758,7 +758,7 @@ export class CommonCommandHandler {
         output: 'No matches found',
         command: fullMatch,
         executionTime: 0,
-      cost: 0
+        cost: 0
       }
     }
   }

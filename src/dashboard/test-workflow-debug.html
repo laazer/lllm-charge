@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Workflow Node Loading</title>
+</head>
+<body>
+    <h1>Debug Test: Workflow Node Loading</h1>
+    <div id="output"></div>
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            output.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+            console.log(message);
+        }
+        
+        // Test the workflow loading endpoint
+        log('Starting workflow debug test...');
+        log('Testing API endpoint: /api/workflows/workflow-1774900517667-nqd973za5');
+        
+        fetch('/api/workflows/workflow-1774900517667-nqd973za5')
+            .then(response => {
+                log('✅ API response status: ' + response.status);
+                return response.json();
+            })
+            .then(workflow => {
+                log('📋 Workflow loaded successfully');
+                log('📊 Workflow name: ' + workflow.name);
+                log('🔢 Number of nodes: ' + (workflow.nodes ? workflow.nodes.length : 0));
+                
+                if (workflow.nodes && workflow.nodes.length > 0) {
+                    log('📍 Node details:');
+                    workflow.nodes.forEach((node, index) => {
+                        log(`   Node ${index + 1}: ${node.name} (${node.type}) at (${node.position.x}, ${node.position.y})`);
+                    });
+                    
+                    // Test creating a simple visual representation
+                    const canvas = document.createElement('div');
+                    canvas.id = 'test-canvas';
+                    canvas.style.cssText = 'position: relative; width: 800px; height: 400px; border: 2px solid #ccc; background: #f9f9f9; margin: 20px 0;';
+                    document.body.appendChild(canvas);
+                    
+                    log('🎨 Creating visual test nodes...');
+                    workflow.nodes.forEach(node => {
+                        const nodeEl = document.createElement('div');
+                        nodeEl.style.cssText = `
+                            position: absolute;
+                            left: ${node.position.x}px;
+                            top: ${node.position.y}px;
+                            width: 150px;
+                            height: 80px;
+                            background: #4338ca;
+                            color: white;
+                            border-radius: 8px;
+                            padding: 10px;
+                            border: 2px solid #312e81;
+                            font-size: 12px;
+                        `;
+                        nodeEl.innerHTML = `<strong>${node.name}</strong><br>Type: ${node.type}`;
+                        canvas.appendChild(nodeEl);
+                        log(`✅ Created visual node: ${node.name}`);
+                    });
+                    
+                    log('🏁 Test complete - nodes should be visible above');
+                } else {
+                    log('❌ No nodes found in workflow');
+                }
+            })
+            .catch(error => {
+                log('❌ Error: ' + error.message);
+            });
+    </script>
+</body>
+</html>
