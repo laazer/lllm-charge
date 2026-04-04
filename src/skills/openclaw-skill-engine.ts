@@ -300,7 +300,7 @@ export class OpenClawSkillEngine extends EventEmitter {
     } catch (error) {
       execution.status = 'failed'
       execution.endTime = Date.now()
-      execution.error = error.message
+      execution.error = (error as Error).message
 
       this.emit('skillFailed', { executionId, skillName, command, error })
       throw error
@@ -355,25 +355,25 @@ export class OpenClawSkillEngine extends EventEmitter {
       dependencyConflicts: await this.findDependencyConflicts()
     }
 
-    const recommendations = {
-      cleanup: analysis.unusedSkills.map(skill => ({
+    const recommendations = [
+      ...analysis.unusedSkills.map(skill => ({
         action: 'uninstall',
         skill: skill.name,
         reason: 'Unused for 30+ days'
       })),
-      updates: analysis.outdatedSkills.map(skill => ({
+      ...analysis.outdatedSkills.map(skill => ({
         action: 'update',
         skill: skill.name,
         currentVersion: skill.version,
         latestVersion: this.registry.available.get(skill.name)?.version
       })),
-      optimization: analysis.resourceHogs.map(skill => ({
+      ...analysis.resourceHogs.map(skill => ({
         action: 'optimize',
         skill: skill.name,
         issue: 'High resource usage',
         suggestion: 'Consider alternatives or resource limits'
       }))
-    }
+    ]
 
     return { analysis, recommendations }
   }
@@ -403,7 +403,7 @@ export class OpenClawSkillEngine extends EventEmitter {
         this.registry.categories.get(category)!.push(dir)
         
       } catch (error) {
-        console.warn(`Failed to load skill ${dir}:`, error.message)
+        console.warn(`Failed to load skill ${dir}:`, (error as Error).message)
       }
     }
   }
@@ -566,7 +566,7 @@ export class OpenClawSkillEngine extends EventEmitter {
     const commandArgs = this.buildCommandArgs(command, parameters)
     
     return new Promise((resolve, reject) => {
-      const process = spawn('bash', ['-c', command.usage], {
+      const proc = spawn('bash', ['-c', command.usage], {
         cwd: skillPath,
         env: { ...process.env, ...skill.security.environmentVariables },
         stdio: command.pty ? 'inherit' : 'pipe'
@@ -576,16 +576,16 @@ export class OpenClawSkillEngine extends EventEmitter {
       let error = ''
 
       if (!command.pty) {
-        process.stdout?.on('data', (data) => {
+        proc.stdout?.on('data', (data: Buffer) => {
           output += data.toString()
         })
 
-        process.stderr?.on('data', (data) => {
+        proc.stderr?.on('data', (data: Buffer) => {
           error += data.toString()
         })
       }
 
-      process.on('close', (code) => {
+      proc.on('close', (code: number | null) => {
         resolve({
           output: output || 'Command executed successfully',
           error: error || undefined,
@@ -593,14 +593,14 @@ export class OpenClawSkillEngine extends EventEmitter {
         })
       })
 
-      process.on('error', (err) => {
+      proc.on('error', (err: Error) => {
         reject(new Error(`Command execution failed: ${err.message}`))
       })
 
       // Set timeout
       if (command.timeout) {
         setTimeout(() => {
-          process.kill('SIGTERM')
+          proc.kill('SIGTERM')
           reject(new Error('Command execution timed out'))
         }, command.timeout)
       }

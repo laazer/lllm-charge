@@ -473,7 +473,7 @@ export class N8nWorkflowEngine extends EventEmitter {
       this.emit('executionCompleted', { executionId: execution.id, result })
     } catch (error) {
       execution.status = 'error'
-      execution.data = { error: error.message }
+      execution.data = { error: (error as Error).message }
       execution.stoppedAt = new Date()
       execution.finished = true
 
