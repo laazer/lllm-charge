@@ -20,7 +20,17 @@
       "Bash(find . -name package.json -exec cat {} ;)",
       "Bash(grep -E \"\\\\.\\(json|js|ts\\)$|^\\\\.\")",
       "Bash(rsync -av --exclude='node_modules' --exclude='.git' --exclude='dist' --exclude='coverage' --exclude='.claude' /Users/jacobbrandt/Downloads/llm-charge-20260403_172647/ /Users/jacobbrandt/workspace/lllm-charge/)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ls /Users/jacobbrandt/workspace/lllm-charge/*.md)",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)",
+      "Bash(wc -l /Users/jacobbrandt/workspace/lllm-charge/src/server/*.mjs)",
+      "Bash(find /Users/jacobbrandt/workspace/lllm-charge/src/dashboard -type f -name \"*.html\" -exec wc -l {} \\\\;)",
+      "Bash(wc -l /Users/jacobbrandt/workspace/lllm-charge/*.html)",
+      "Bash(ls -lhS /Users/jacobbrandt/workspace/lllm-charge/src/server/*.mjs)",
+      "Read(//tmp/**)"
     ],
     "deny": [],
     "ask": []

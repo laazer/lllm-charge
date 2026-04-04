@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { DatabaseManager } from '../server/database-manager.mjs'
-import { IndependentDatabaseManager } from '../server/independent-database-manager.mjs'
+import { DatabaseManager } from '../src/server/database-manager.mjs'
+import { IndependentDatabaseManager } from '../src/server/independent-database-manager.mjs'
 
 /**
  * Migration script to move from combined database to independent architecture
