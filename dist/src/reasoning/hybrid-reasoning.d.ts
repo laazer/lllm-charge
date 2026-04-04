@@ -2,6 +2,7 @@ import { UnifiedIntelligence } from '@/intelligence/unified-intelligence';
 import { RLMEngine } from './rlm-engine';
 import { LocalLLMRouter } from './local-llm-router';
 import { ContextPackage, ReasoningSession } from '@/core/types';
+import { SkillEnrichmentProvider, SkillUsageSummary } from './skill-enrichment-provider';
 export interface ReasoningRequest {
     query: string;
     requiresReasoning?: boolean;
@@ -20,13 +21,16 @@ export interface ReasoningResponse {
     tokensUsed: number;
     stepsExecuted: number;
     confidence: number;
+    executionTimeMs?: number;
+    skillsUsed?: SkillUsageSummary[];
 }
 export declare class HybridReasoning {
     private intelligence;
     private rlmEngine;
     private router;
+    private skillProvider?;
     private commandHandler;
-    constructor(intelligence: UnifiedIntelligence, rlmEngine: RLMEngine, router: LocalLLMRouter);
+    constructor(intelligence: UnifiedIntelligence, rlmEngine: RLMEngine, router: LocalLLMRouter, skillProvider?: SkillEnrichmentProvider | undefined);
     processQuery(request: ReasoningRequest, cwd?: string): Promise<ReasoningResponse>;
     private buildIntelligentContext;
     private selectReasoningStrategy;
@@ -41,5 +45,6 @@ export declare class HybridReasoning {
     private needsReasoning;
     private estimateRLMTokens;
     private estimateTokens;
+    private enrichContextWithSkills;
     private updateMemoryGraph;
 }

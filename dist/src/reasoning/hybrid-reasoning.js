@@ -5,14 +5,17 @@ export class HybridReasoning {
     intelligence;
     rlmEngine;
     router;
+    skillProvider;
     commandHandler;
-    constructor(intelligence, rlmEngine, router) {
+    constructor(intelligence, rlmEngine, router, skillProvider) {
         this.intelligence = intelligence;
         this.rlmEngine = rlmEngine;
         this.router = router;
+        this.skillProvider = skillProvider;
         this.commandHandler = new CommonCommandHandler();
     }
     async processQuery(request, cwd) {
+        const startTime = Date.now();
         // First, check if this is a simple command that can be handled directly
         const commandResult = await this.commandHandler.handleCommand(request.query, cwd);
         if (commandResult) {
@@ -23,13 +26,16 @@ export class HybridReasoning {
                 cost: 0,
                 tokensUsed: 0,
                 stepsExecuted: 1,
-                confidence: commandResult.success ? 1.0 : 0.5
+                confidence: commandResult.success ? 1.0 : 0.5,
+                executionTimeMs: Date.now() - startTime,
+                skillsUsed: [],
             };
         }
-        const startTime = Date.now();
         // Step 1: Build rich context using unified intelligence
         const contextPackage = await this.buildIntelligentContext(request);
-        // Step 2: Determine reasoning strategy
+        // Step 1.5: Enrich context with skills
+        const skillUsageSummaries = await this.enrichContextWithSkills(request.query, contextPackage);
+        // Step 2: Determine reasoning strategy (skills may influence this)
         const strategy = this.selectReasoningStrategy(request, contextPackage);
         // Step 3: Execute reasoning
         let response;
@@ -52,6 +58,9 @@ export class HybridReasoning {
         // Step 4: Update memory with learnings
         await this.updateMemoryGraph(request, response);
         response.context = contextPackage;
+        response.executionTimeMs = Date.now() - startTime;
+        response.skillsUsed = skillUsageSummaries;
+        response.cost += skillUsageSummaries.reduce((sum, s) => sum + s.cost, 0);
         return response;
     }
     async buildIntelligentContext(request) {
@@ -59,6 +68,15 @@ export class HybridReasoning {
         return this.intelligence.buildContextPackage(request.query, maxTokens);
     }
     selectReasoningStrategy(request, context) {
+        // If a skill provided a high-confidence direct answer, use the cheapest strategy
+        const hasDirectAnswer = context.skillEnrichments?.some(enrichment => enrichment.resultType === 'direct-answer' && enrichment.confidence >= 0.8);
+        if (hasDirectAnswer) {
+            return {
+                type: 'direct-local',
+                confidence: 0.95,
+                reason: 'High-confidence skill provided a direct answer',
+            };
+        }
         const complexity = request.complexity || this.assessComplexity(request.query, context);
         const requiresReasoning = request.requiresReasoning ?? this.needsReasoning(request.query);
         const contextSize = context.estimatedTokens;
@@ -190,6 +208,10 @@ export class HybridReasoning {
             const memories = context.memoryNodes.slice(0, 3).map(n => `- ${n.type}: ${n.content.slice(0, 200)}...`).join('\n');
             sections.push(`Related Knowledge:\n${memories}`);
         }
+        if (context.skillEnrichments && context.skillEnrichments.length > 0) {
+            const skillContext = context.skillEnrichments.map(enrichment => `- [${enrichment.skillName}] (confidence: ${enrichment.confidence.toFixed(2)}): ${enrichment.content.slice(0, 500)}`).join('\n');
+            sections.push(`Skill-Provided Context:\n${skillContext}`);
+        }
         const contextText = sections.length > 0 ? sections.join('\n\n') : 'No specific context available.';
         return `Context:\n${contextText}\n\nQuery: ${query}\n\nPlease provide a comprehensive answer based on the context provided.`;
     }
@@ -238,6 +260,34 @@ Use this context to understand the codebase structure and relationships when ans
     }
     estimateTokens(text) {
         return Math.ceil(text.length / 4);
+    }
+    async enrichContextWithSkills(query, contextPackage) {
+        if (!this.skillProvider)
+            return [];
+        try {
+            const enrichments = await this.skillProvider.enrichQuery(query, contextPackage);
+            const relevantEnrichments = enrichments.filter(enrichment => enrichment.confidence >= 0.3);
+            contextPackage.skillEnrichments = relevantEnrichments.map(enrichment => ({
+                skillId: enrichment.skillId,
+                skillName: enrichment.skillName,
+                content: enrichment.content,
+                resultType: enrichment.resultType,
+                confidence: enrichment.confidence,
+            }));
+            const additionalTokens = relevantEnrichments.reduce((sum, enrichment) => sum + Math.ceil(enrichment.content.length / 4), 0);
+            contextPackage.estimatedTokens += additionalTokens;
+            return relevantEnrichments.map(enrichment => ({
+                skillId: enrichment.skillId,
+                skillName: enrichment.skillName,
+                executionTimeMs: enrichment.executionTimeMs,
+                resultType: enrichment.resultType,
+                cost: enrichment.cost,
+            }));
+        }
+        catch (error) {
+            console.warn('Skill enrichment failed, continuing without skills:', error);
+            return [];
+        }
     }
     async updateMemoryGraph(request, response) {
         const memoryId = `query_${Date.now()}`;

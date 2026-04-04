@@ -9,13 +9,12 @@ export class HybridIntelligenceRouter {
     learningData;
     constructor(claudeApiKey, localConfig, knowledgeBase) {
         this.claudeProvider = new ClaudeProvider(claudeApiKey);
-        this.localRouter = new LocalLLMRouter(localConfig);
+        this.localRouter = new LocalLLMRouter(localConfig, {});
         this.knowledgeBase = knowledgeBase;
         this.routingMetrics = this.initializeMetrics();
         this.learningData = [];
     }
     async initialize() {
-        await this.localRouter.initialize();
         await this.loadRoutingHistory();
     }
     async routeRequest(request) {
@@ -38,10 +37,9 @@ export class HybridIntelligenceRouter {
                 });
             }
             else {
-                response = await this.localRouter.generateResponse({
+                response = await this.localRouter.processRequest({
                     prompt: request.query,
-                    task: request.task,
-                    preferredModel: choice.model
+                    context: request.context
                 });
             }
             // Update metrics
@@ -228,10 +226,9 @@ export class HybridIntelligenceRouter {
                 });
             }
             else {
-                return await this.localRouter.generateResponse({
+                return await this.localRouter.processRequest({
                     prompt: request.query,
-                    task: request.task,
-                    preferredModel: fallbackChoice.model
+                    context: request.context
                 });
             }
         }

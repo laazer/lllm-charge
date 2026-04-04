@@ -4,7 +4,7 @@ export class LLMOptimizationEngine {
     router;
     costTracker;
     performanceHistory;
-    optimizationStrategies;
+    optimizationStrategies = [];
     benchmarkCache;
     constructor(router, costTracker) {
         this.router = router;
@@ -91,7 +91,7 @@ export class LLMOptimizationEngine {
         const cacheKey = `${model}-${this.hashPrompts(testPrompts)}`;
         if (this.benchmarkCache.has(cacheKey)) {
             const cached = this.benchmarkCache.get(cacheKey);
-            if (Date.now() - cached.timestamp < 3600000) { // 1 hour cache
+            if (cached.timestamp && Date.now() - cached.timestamp < 3600000) { // 1 hour cache
                 return cached.performance;
             }
         }
@@ -151,8 +151,14 @@ export class LLMOptimizationEngine {
             lastBenchmark: new Date()
         };
         this.benchmarkCache.set(cacheKey, {
-            performance,
-            timestamp: Date.now()
+            prompt: `Benchmark for ${model}:local`,
+            response: null,
+            success: successRate > 0,
+            latency: avgLatency,
+            tokens: tokenThroughput,
+            quality: avgQuality,
+            timestamp: Date.now(),
+            performance
         });
         return performance;
     }

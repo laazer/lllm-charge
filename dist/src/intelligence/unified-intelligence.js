@@ -1,5 +1,8 @@
 // Unified intelligence engine combining CodeGraph and Context+ capabilities
 // FEATURE: Enhanced code intelligence with structural and semantic analysis
+import { CodeGraphEngine } from './codegraph-engine';
+import { ContextPlusEngine } from './contextplus-engine';
+import { MemoryGraphEngine } from './memory-graph-engine';
 export class UnifiedIntelligence {
     codeGraph;
     contextPlus;
@@ -64,8 +67,8 @@ export class UnifiedIntelligence {
             this.contextPlus.semanticCodeSearch(query)
         ]);
         return [
-            ...codeMatches.map(m => ({ ...m, source: 'codegraph' })),
-            ...contextMatches.map(m => ({ ...m, source: 'contextplus' }))
+            ...codeMatches.map((m) => ({ ...m, source: 'codegraph' })),
+            ...contextMatches.map((m) => ({ ...m, source: 'contextplus' }))
         ].sort((a, b) => b.similarity - a.similarity);
     }
     async searchMemory(query) {

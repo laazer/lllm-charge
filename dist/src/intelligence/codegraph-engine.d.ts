@@ -5,7 +5,7 @@ export declare class CodeGraphEngine {
     private parser;
     private languages;
     private projectPath;
-    constructor(config: IntelligenceConfig);
+    constructor(config: any);
     initialize(projectPath: string): Promise<void>;
     searchSymbols(query: string, limit?: number): Promise<CodeSymbol[]>;
     semanticSearch(query: string, limit?: number): Promise<SemanticMatch[]>;

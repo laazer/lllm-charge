@@ -8,10 +8,13 @@ import { DocsIntelligence } from '@/intelligence/docs-intelligence';
 import { HybridReasoning } from '@/reasoning/hybrid-reasoning';
 import { RLMEngine } from '@/reasoning/rlm-engine';
 import { LocalLLMRouter } from '@/reasoning/local-llm-router';
+import { MCPSkillEnrichmentAdapter } from '@/reasoning/mcp-skill-enrichment-adapter';
+import { MCPClientManager, MCPSkillOrchestrator } from './client-tools';
 import { CostTracker } from '@/utils/cost-tracker';
 import { CommonCommandHandler } from '@/utils/common-commands';
 import { KnowledgeBase } from '@/core/knowledge-base';
 import { docsTools } from './docs-tools';
+import { ReactDevTools } from '../react-tools';
 export class LLMChargeServer {
     config;
     projectPath;
@@ -22,6 +25,7 @@ export class LLMChargeServer {
     costTracker;
     commandHandler;
     knowledgeBase;
+    reactDevTools;
     initialized = false;
     constructor(config, projectPath) {
         this.config = config;
@@ -48,7 +52,7 @@ export class LLMChargeServer {
     async initialize() {
         console.log('Initializing LLM-Charge server...');
         // Initialize shared knowledge base
-        this.knowledgeBase = new KnowledgeBase(this.config.intelligence.knowledgeBase.path || './knowledge.db');
+        this.knowledgeBase = new KnowledgeBase(this.config.intelligence.knowledgeBase?.path || './knowledge.db');
         await this.knowledgeBase.initialize();
         // Initialize intelligence engines
         this.intelligence = new UnifiedIntelligence(this.config.intelligence);
@@ -60,11 +64,34 @@ export class LLMChargeServer {
         const rlmEngine = new RLMEngine(this.config.reasoning);
         await rlmEngine.initialize();
         const router = new LocalLLMRouter(this.config.local, this.config.api);
-        this.reasoning = new HybridReasoning(this.intelligence, rlmEngine, router);
+        // Initialize skill enrichment provider (optional, reasoning works without it)
+        let skillProvider;
+        try {
+            const clientManager = new MCPClientManager({
+                serverCommand: 'node',
+                costTracking: true,
+                validationLevel: 'basic',
+                caching: { enabled: true, ttl: 300, maxSize: 100 },
+            });
+            const orchestrator = new MCPSkillOrchestrator(clientManager);
+            skillProvider = new MCPSkillEnrichmentAdapter(orchestrator);
+            console.log('Skill enrichment provider initialized');
+        }
+        catch (error) {
+            console.warn('Skill enrichment not available, reasoning will proceed without skills:', error);
+        }
+        this.reasoning = new HybridReasoning(this.intelligence, rlmEngine, router, skillProvider);
         // Initialize cost tracking
         this.costTracker = new CostTracker(this.config.api);
         // Initialize common command handler
         this.commandHandler = new CommonCommandHandler();
+        // Initialize React development tools
+        this.reactDevTools = new ReactDevTools({
+            projectPath: this.projectPath,
+            defaultComponentPath: 'components',
+            includeTestsByDefault: true,
+            includeStorybookByDefault: false
+        });
         this.initialized = true;
         console.log('LLM-Charge server initialized successfully');
     }
@@ -336,6 +363,73 @@ export class LLMChargeServer {
                         },
                         required: ['api_or_concept']
                     }
+                },
+                // React Development Tools
+                {
+                    name: 'scaffold_react_component',
+                    description: 'Generate a new React component with TypeScript, tests, and optional Storybook files',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {
+                            componentName: { type: 'string', description: 'Name of the component (PascalCase, e.g., "UserProfile")' },
+                            componentType: { type: 'string', enum: ['functional', 'page', 'layout', 'ui'], description: 'Type of component to generate', default: 'functional' },
+                            includeTests: { type: 'boolean', description: 'Generate test file with React Testing Library', default: true },
+                            includeStorybook: { type: 'boolean', description: 'Generate Storybook file (only for UI components)', default: false },
+                            outputPath: { type: 'string', description: 'Custom output path relative to src/react/' },
+                            propsInterface: { type: 'object', description: 'Custom props interface definition', additionalProperties: true }
+                        },
+                        required: ['componentName']
+                    }
+                },
+                {
+                    name: 'analyze_react_component',
+                    description: 'Analyze React component for state patterns, performance issues, and optimization opportunities',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {
+                            componentPath: { type: 'string', description: 'Path to the React component file to analyze' }
+                        },
+                        required: ['componentPath']
+                    }
+                },
+                {
+                    name: 'analyze_react_project',
+                    description: 'Analyze the entire React project for state management patterns and get health score',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {}
+                    }
+                },
+                {
+                    name: 'get_react_project_health',
+                    description: 'Get overall React project health with performance metrics and recommendations',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {}
+                    }
+                },
+                {
+                    name: 'create_react_ui_component',
+                    description: 'Quick helper to create a UI component with Storybook',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {
+                            componentName: { type: 'string', description: 'Name of the UI component (PascalCase)' },
+                            includeStorybook: { type: 'boolean', description: 'Include Storybook file', default: true }
+                        },
+                        required: ['componentName']
+                    }
+                },
+                {
+                    name: 'create_react_page_component',
+                    description: 'Quick helper to create a page component with routing',
+                    inputSchema: {
+                        type: 'object',
+                        properties: {
+                            componentName: { type: 'string', description: 'Name of the page component (PascalCase)' }
+                        },
+                        required: ['componentName']
+                    }
                 }
             ]
         }));
@@ -388,6 +482,19 @@ export class LLMChargeServer {
                         return await this.handleDocsTool('get_documentation_status', args);
                     case 'quick_doc_lookup':
                         return await this.handleDocsTool('quick_doc_lookup', args);
+                    // React Development Tools
+                    case 'scaffold_react_component':
+                        return await this.handleScaffoldReactComponent(args);
+                    case 'analyze_react_component':
+                        return await this.handleAnalyzeReactComponent(args);
+                    case 'analyze_react_project':
+                        return await this.handleAnalyzeReactProject(args);
+                    case 'get_react_project_health':
+                        return await this.handleGetReactProjectHealth(args);
+                    case 'create_react_ui_component':
+                        return await this.handleCreateReactUIComponent(args);
+                    case 'create_react_page_component':
+                        return await this.handleCreateReactPageComponent(args);
                     default:
                         throw new Error(`Unknown tool: ${name}`);
                 }
@@ -478,7 +585,7 @@ export class LLMChargeServer {
             cost: response.cost,
             tokens: response.tokensUsed,
             model: response.modelUsed,
-            latencyMs: response.executionTime || 0
+            latencyMs: response.executionTimeMs || 0
         });
         return {
             content: [{
@@ -671,5 +778,202 @@ These commands are processed locally with zero cost and sub-second execution tim
                     text: result
                 }]
         };
+    }
+    // React Development Tool Handlers
+    async handleScaffoldReactComponent(args) {
+        try {
+            const result = await this.reactDevTools.createComponent(args);
+            let responseText = `✅ React component "${args.componentName}" scaffolded successfully!\n\n`;
+            responseText += `📁 Files created:\n`;
+            result.files.forEach((file) => {
+                responseText += `   - ${file}\n`;
+            });
+            if (result.errors && result.errors.length > 0) {
+                responseText += `\n⚠️ Warnings:\n`;
+                result.errors.forEach((error) => {
+                    responseText += `   - ${error}\n`;
+                });
+            }
+            return {
+                content: [{
+                        type: 'text',
+                        text: responseText
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: 'text',
+                        text: `❌ Error scaffolding component: ${error instanceof Error ? error.message : String(error)}`
+                    }],
+                isError: true
+            };
+        }
+    }
+    async handleAnalyzeReactComponent(args) {
+        try {
+            const analysis = await this.reactDevTools.analyzeComponent(args.componentPath);
+            let responseText = `🔍 React Component Analysis: ${args.componentPath}\n\n`;
+            responseText += `📊 Scores:\n`;
+            responseText += `   - Overall: ${analysis.score.overall}/100\n`;
+            responseText += `   - State Management: ${analysis.score.stateManagement}/100\n`;
+            responseText += `   - Performance: ${analysis.score.performance}/100\n`;
+            responseText += `   - Maintainability: ${analysis.score.maintainability}/100\n\n`;
+            if (analysis.statePatterns.length > 0) {
+                responseText += `🎯 State Patterns Found:\n`;
+                analysis.statePatterns.forEach((pattern) => {
+                    responseText += `   - ${pattern.type}: ${pattern.name} (${pattern.complexity} complexity)\n`;
+                });
+                responseText += '\n';
+            }
+            if (analysis.rerenderRisks.length > 0) {
+                responseText += `⚠️ Performance Risks:\n`;
+                analysis.rerenderRisks.forEach((risk) => {
+                    responseText += `   - ${risk.type} (${risk.risk} risk): ${risk.reason}\n`;
+                });
+                responseText += '\n';
+            }
+            if (analysis.optimizationSuggestions.length > 0) {
+                responseText += `💡 Optimization Suggestions:\n`;
+                analysis.optimizationSuggestions.forEach((suggestion) => {
+                    responseText += `   - [${suggestion.priority}] ${suggestion.description}\n`;
+                });
+            }
+            return {
+                content: [{
+                        type: 'text',
+                        text: responseText
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: 'text',
+                        text: `❌ Error analyzing component: ${error instanceof Error ? error.message : String(error)}`
+                    }],
+                isError: true
+            };
+        }
+    }
+    async handleAnalyzeReactProject(args) {
+        try {
+            const analyses = await this.reactDevTools.analyzeProject();
+            let responseText = `🔍 React Project Analysis\n\n`;
+            responseText += `📊 Project Overview:\n`;
+            responseText += `   - Total Components: ${analyses.length}\n`;
+            if (analyses.length > 0) {
+                const avgScore = analyses.reduce((sum, a) => sum + a.score.overall, 0) / analyses.length;
+                responseText += `   - Average Score: ${Math.round(avgScore)}/100\n`;
+                const highRisk = analyses.filter(a => a.score.overall < 60);
+                if (highRisk.length > 0) {
+                    responseText += `   - High Risk Components: ${highRisk.length}\n`;
+                }
+                responseText += `\n📋 Component Details:\n`;
+                analyses.forEach((analysis) => {
+                    const fileName = analysis.componentPath.split('/').pop() || 'Unknown';
+                    responseText += `   - ${fileName}: ${analysis.score.overall}/100 (${analysis.optimizationSuggestions.length} suggestions)\n`;
+                });
+            }
+            return {
+                content: [{
+                        type: 'text',
+                        text: responseText
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: 'text',
+                        text: `❌ Error analyzing project: ${error instanceof Error ? error.message : String(error)}`
+                    }],
+                isError: true
+            };
+        }
+    }
+    async handleGetReactProjectHealth(args) {
+        try {
+            const health = await this.reactDevTools.getProjectHealth();
+            let responseText = `🏥 React Project Health Report\n\n`;
+            responseText += `📊 Overall Metrics:\n`;
+            responseText += `   - Total Components: ${health.totalComponents}\n`;
+            responseText += `   - Average Score: ${health.averageScore}/100\n`;
+            responseText += `   - High Risk Components: ${health.highRiskComponents}\n`;
+            responseText += `   - Optimization Opportunities: ${health.optimizationOpportunities}\n\n`;
+            if (health.recommendations && health.recommendations.length > 0) {
+                responseText += `💡 Project-Wide Recommendations:\n`;
+                health.recommendations.forEach((rec) => {
+                    responseText += `   - [${rec.priority}] ${rec.description}\n`;
+                    responseText += `     Action: ${rec.action}\n`;
+                });
+            }
+            return {
+                content: [{
+                        type: 'text',
+                        text: responseText
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: 'text',
+                        text: `❌ Error getting project health: ${error instanceof Error ? error.message : String(error)}`
+                    }],
+                isError: true
+            };
+        }
+    }
+    async handleCreateReactUIComponent(args) {
+        try {
+            const result = await this.reactDevTools.createUIComponent(args.componentName, args.includeStorybook);
+            let responseText = `✅ UI Component "${args.componentName}" created successfully!\n\n`;
+            responseText += `📁 Files created:\n`;
+            result.files.forEach((file) => {
+                responseText += `   - ${file}\n`;
+            });
+            return {
+                content: [{
+                        type: 'text',
+                        text: responseText
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: 'text',
+                        text: `❌ Error creating UI component: ${error instanceof Error ? error.message : String(error)}`
+                    }],
+                isError: true
+            };
+        }
+    }
+    async handleCreateReactPageComponent(args) {
+        try {
+            const result = await this.reactDevTools.createPageComponent(args.componentName);
+            let responseText = `✅ Page Component "${args.componentName}" created successfully!\n\n`;
+            responseText += `📁 Files created:\n`;
+            result.files.forEach((file) => {
+                responseText += `   - ${file}\n`;
+            });
+            return {
+                content: [{
+                        type: 'text',
+                        text: responseText
+                    }]
+            };
+        }
+        catch (error) {
+            return {
+                content: [{
+                        type: 'text',
+                        text: `❌ Error creating page component: ${error instanceof Error ? error.message : String(error)}`
+                    }],
+                isError: true
+            };
+        }
     }
 }

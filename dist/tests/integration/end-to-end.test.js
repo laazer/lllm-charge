@@ -456,7 +456,6 @@ app.listen(3000, () => {
     }
     async function mockServerComponents(server) {
         // Mock all server components for testing
-        ;
         server.intelligence = createMockIntelligence();
         server.docsIntelligence = createMockDocsIntelligence();
         server.reasoning = {

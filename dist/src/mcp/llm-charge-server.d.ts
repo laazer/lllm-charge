@@ -9,6 +9,7 @@ export declare class LLMChargeServer {
     private costTracker;
     private commandHandler;
     private knowledgeBase;
+    private reactDevTools;
     private initialized;
     constructor(config: LLMChargeConfig, projectPath: string);
     start(): Promise<void>;
@@ -32,4 +33,10 @@ export declare class LLMChargeServer {
     private handleExecuteCommonCommand;
     private handleListAvailableCommands;
     private handleDocsTool;
+    private handleScaffoldReactComponent;
+    private handleAnalyzeReactComponent;
+    private handleAnalyzeReactProject;
+    private handleGetReactProjectHealth;
+    private handleCreateReactUIComponent;
+    private handleCreateReactPageComponent;
 }

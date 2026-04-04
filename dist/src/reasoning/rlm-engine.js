@@ -60,28 +60,20 @@ export class RLMEngine {
             verbose: true
         };
         const fullPrompt = context ? `Context:\n${context}\n\nQuery: ${query}` : query;
-        return new Promise((resolve, reject) => {
-            const options = {
-                mode: 'text',
-                pythonPath: this.pythonPath,
-                scriptPath: path.dirname(this.rlmScript),
-                args: [
-                    '--config', JSON.stringify(rlmConfig),
-                    '--query', fullPrompt,
-                    '--session-id', sessionId
-                ]
-            };
-            PythonShell.run(path.basename(this.rlmScript), options, (err, results) => {
-                if (err) {
-                    reject(new Error(`RLM execution failed: ${err.message}`));
-                }
-                else {
-                    const output = results?.join('\n') || '';
-                    this.parseRLMOutput(sessionId, output);
-                    resolve(output);
-                }
-            });
-        });
+        const options = {
+            mode: 'text',
+            pythonPath: this.pythonPath,
+            scriptPath: path.dirname(this.rlmScript),
+            args: [
+                '--config', JSON.stringify(rlmConfig),
+                '--query', fullPrompt,
+                '--session-id', sessionId
+            ]
+        };
+        const results = await PythonShell.run(path.basename(this.rlmScript), options);
+        const output = results?.join('\n') || '';
+        this.parseRLMOutput(sessionId, output);
+        return output;
     }
     async getSession(sessionId) {
         return this.sessions.get(sessionId) || null;
@@ -161,17 +153,13 @@ if __name__ == '__main__':
         await fs.chmod(this.rlmScript, 0o755);
     }
     async testPythonEnvironment() {
-        return new Promise((resolve, reject) => {
-            PythonShell.run('--version', {}, (err, results) => {
-                if (err) {
-                    reject(new Error('Python environment not available'));
-                }
-                else {
-                    console.log('Python environment ready:', results?.[0]);
-                    resolve();
-                }
-            });
-        });
+        try {
+            const results = await PythonShell.run('--version', {});
+            console.log('Python environment ready:', results?.[0]);
+        }
+        catch {
+            throw new Error('Python environment not available');
+        }
     }
     getEnvironmentKwargs() {
         switch (this.config.environment) {

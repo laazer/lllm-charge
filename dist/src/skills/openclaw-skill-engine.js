@@ -156,25 +156,25 @@ export class OpenClawSkillEngine extends EventEmitter {
             outdatedSkills: await this.findOutdatedSkills(),
             dependencyConflicts: await this.findDependencyConflicts()
         };
-        const recommendations = {
-            cleanup: analysis.unusedSkills.map(skill => ({
+        const recommendations = [
+            ...analysis.unusedSkills.map(skill => ({
                 action: 'uninstall',
                 skill: skill.name,
                 reason: 'Unused for 30+ days'
             })),
-            updates: analysis.outdatedSkills.map(skill => ({
+            ...analysis.outdatedSkills.map(skill => ({
                 action: 'update',
                 skill: skill.name,
                 currentVersion: skill.version,
                 latestVersion: this.registry.available.get(skill.name)?.version
             })),
-            optimization: analysis.resourceHogs.map(skill => ({
+            ...analysis.resourceHogs.map(skill => ({
                 action: 'optimize',
                 skill: skill.name,
                 issue: 'High resource usage',
                 suggestion: 'Consider alternatives or resource limits'
             }))
-        };
+        ];
         return { analysis, recommendations };
     }
     // Private methods
@@ -336,7 +336,7 @@ export class OpenClawSkillEngine extends EventEmitter {
         const skillPath = path.join(this.skillsPath, skill.name);
         const commandArgs = this.buildCommandArgs(command, parameters);
         return new Promise((resolve, reject) => {
-            const process = spawn('bash', ['-c', command.usage], {
+            const proc = spawn('bash', ['-c', command.usage], {
                 cwd: skillPath,
                 env: { ...process.env, ...skill.security.environmentVariables },
                 stdio: command.pty ? 'inherit' : 'pipe'
@@ -344,27 +344,27 @@ export class OpenClawSkillEngine extends EventEmitter {
             let output = '';
             let error = '';
             if (!command.pty) {
-                process.stdout?.on('data', (data) => {
+                proc.stdout?.on('data', (data) => {
                     output += data.toString();
                 });
-                process.stderr?.on('data', (data) => {
+                proc.stderr?.on('data', (data) => {
                     error += data.toString();
                 });
             }
-            process.on('close', (code) => {
+            proc.on('close', (code) => {
                 resolve({
                     output: output || 'Command executed successfully',
                     error: error || undefined,
                     exitCode: code || 0
                 });
             });
-            process.on('error', (err) => {
+            proc.on('error', (err) => {
                 reject(new Error(`Command execution failed: ${err.message}`));
             });
             // Set timeout
             if (command.timeout) {
                 setTimeout(() => {
-                    process.kill('SIGTERM');
+                    proc.kill('SIGTERM');
                     reject(new Error('Command execution timed out'));
                 }, command.timeout);
             }

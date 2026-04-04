@@ -190,6 +190,14 @@ export interface ContextPackage {
     memoryNodes: MemoryNode[];
     semanticMatches: SemanticMatch[];
     estimatedTokens: number;
+    skillEnrichments?: SkillEnrichment[];
+}
+export interface SkillEnrichment {
+    skillId: string;
+    skillName: string;
+    content: string;
+    resultType: 'context' | 'direct-answer' | 'recommendation';
+    confidence: number;
 }
 export interface SemanticMatch {
     content: string;

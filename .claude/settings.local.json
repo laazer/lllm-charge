@@ -30,7 +30,12 @@
       "Bash(find /Users/jacobbrandt/workspace/lllm-charge/src/dashboard -type f -name \"*.html\" -exec wc -l {} \\\\;)",
       "Bash(wc -l /Users/jacobbrandt/workspace/lllm-charge/*.html)",
       "Bash(ls -lhS /Users/jacobbrandt/workspace/lllm-charge/src/server/*.mjs)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(chmod +x:*)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('mcpServers', {}\\), indent=2\\)\\)\")",
+      "Bash(python3:*)",
+      "Bash(npm run:*)",
+      "Bash(ls /Users/jacobbrandt/workspace/lllm-charge/node_modules/web-tree-sitter/*.d.ts)"
     ],
     "deny": [],
     "ask": []

@@ -1,7 +1,7 @@
 // CodeGraph integration engine for structural code analysis
 // FEATURE: Tree-sitter based code parsing and graph construction
 import { Database } from 'sqlite3';
-import * as TreeSitter from 'web-tree-sitter';
+import Parser from 'web-tree-sitter';
 export class CodeGraphEngine {
     config;
     db;
@@ -197,8 +197,8 @@ export class CodeGraphEngine {
         this.db.exec(schema);
     }
     async initializeParser() {
-        await TreeSitter.init();
-        this.parser = new TreeSitter();
+        await Parser.init();
+        this.parser = new Parser();
     }
     async indexProject() {
         // Implementation would scan the project directory and extract symbols

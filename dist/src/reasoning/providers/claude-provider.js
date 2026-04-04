@@ -28,15 +28,16 @@ export class ClaudeProvider {
             };
         }
         catch (error) {
+            const errMsg = error.message;
             return {
-                response: `Claude API Error: ${error.message}`,
+                response: `Claude API Error: ${errMsg}`,
                 provider: 'claude',
                 model: 'claude-3-sonnet',
                 cost: 0,
                 tokens: 0,
                 executionTime: Date.now() - startTime,
                 isLocal: false,
-                error: error.message
+                error: errMsg
             };
         }
     }
