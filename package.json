@@ -8,7 +8,7 @@
     "llm-charge": "./dist/bin/llm-charge.js"
   },
   "scripts": {
-    "build": "tsc && npm run copy-assets",
+    "build": "tsc -p tsconfig.build.json && npm run copy-assets",
     "build:react": "NODE_ENV=production vite build",
     "build:react:dev": "NODE_ENV=development vite build",
     "build:analyze": "ANALYZE=true NODE_ENV=production vite build",
