@@ -145,3 +145,6 @@ snapshots/
 
 ### Runtime Data ###
 data/
+
+### Local Deploy ###
+.local-deploy/
