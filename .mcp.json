@@ -2,8 +2,7 @@
   "mcpServers": {
     "llm-charge": {
       "command": "npx",
-      "args": ["tsx", "src/mcp/start.ts"],
-      "cwd": "/Users/jacobbrandt/workspace/lllm-charge"
+      "args": ["tsx", "/Users/jacobbrandt/workspace/lllm-charge/src/mcp/start.ts"]
     }
   }
 }
