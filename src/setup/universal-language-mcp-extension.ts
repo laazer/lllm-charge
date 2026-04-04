@@ -704,7 +704,7 @@ export class UniversalLanguageMCPExtension {
     // Use appropriate parser based on language
     switch (language) {
       case 'python': return this.parsePythonFile(content, relativePath)
-      case 'go': return this.parseGoFile(content, relativePath)
+      case 'go': return this.parseGenericFile(content, relativePath, language)
       case 'rust': return this.parseRustFile(content, relativePath)
       case 'java': return this.parseJavaFile(content, relativePath)
       case 'csharp': return this.parseCSharpFile(content, relativePath)
@@ -848,7 +848,7 @@ export class UniversalLanguageMCPExtension {
     if (symbol.docstring?.toLowerCase().includes(query)) score += 2
     
     // Boost important symbol types
-    const typeBonus = { 
+    const typeBonus: Record<string, number> = {
       'class': 3, 'interface': 3, 'struct': 3,
       'function': 2, 'method': 2,
       'const': 1, 'variable': 1

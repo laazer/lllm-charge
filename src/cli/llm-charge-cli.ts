@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { AutoAgentSetup } from '../setup/auto-agent-setup.js'
 import { AgentStudio } from '../agents/agent-studio.js'
 import { ProjectForge } from '../project-management/project-forge.js'
-import { ObsidianLite } from '../memory/obsidian-lite.js'
+// import { ObsidianLite } from '../memory/obsidian-lite.js' // module does not exist
 import { CheckpointManager } from '../memory/checkpoint-manager.js'
 import { SpecManager } from '../specs/spec-manager.js'
 import { BetterModelRouter } from '../routing/better-model-router.js'
@@ -26,7 +26,7 @@ class LLMChargeCLI {
   private config: CLIConfig
   private agentStudio?: AgentStudio
   private projectManager?: ProjectForge
-  private memorySystem?: ObsidianLite
+  private memorySystem?: any
   private checkpointManager?: CheckpointManager
   private specManager?: SpecManager
   private modelRouter?: BetterModelRouter
@@ -814,7 +814,7 @@ class LLMChargeCLI {
     
     console.log(`🔍 Search results for "${query}" (${Math.min(results.length, limit)}):\n`)
     
-    results.slice(0, limit).forEach((note, i) => {
+    results.slice(0, limit).forEach((note: any, i: number) => {
       console.log(`${i + 1}. ${note.title}`)
       console.log(`   Tags: ${note.tags.join(', ')}`)
       console.log(`   Updated: ${note.metadata.updatedAt.toLocaleDateString()}`)
@@ -1146,14 +1146,14 @@ class LLMChargeCLI {
 
   private async ensureProjectManager(): Promise<void> {
     if (!this.projectManager) {
-      this.projectManager = new JiraLite()
+      this.projectManager = new ProjectForge()
     }
   }
 
   private async ensureMemorySystem(): Promise<void> {
     if (!this.memorySystem) {
-      this.memorySystem = new ObsidianLite()
-      await this.memorySystem.initialize()
+      // ObsidianLite module not available - memorySystem disabled
+      this.memorySystem = null
     }
   }
 

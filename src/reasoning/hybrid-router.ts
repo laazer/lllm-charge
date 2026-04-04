@@ -47,14 +47,13 @@ export class HybridIntelligenceRouter {
     knowledgeBase: KnowledgeBase
   ) {
     this.claudeProvider = new ClaudeProvider(claudeApiKey)
-    this.localRouter = new LocalLLMRouter(localConfig)
+    this.localRouter = new LocalLLMRouter(localConfig, {} as any)
     this.knowledgeBase = knowledgeBase
     this.routingMetrics = this.initializeMetrics()
     this.learningData = []
   }
 
   async initialize(): Promise<void> {
-    await this.localRouter.initialize()
     await this.loadRoutingHistory()
   }
 
@@ -81,23 +80,22 @@ export class HybridIntelligenceRouter {
           context: request.context
         })
       } else {
-        response = await this.localRouter.generateResponse({
+        response = await this.localRouter.processRequest({
           prompt: request.query,
-          task: request.task,
-          preferredModel: choice.model
+          context: request.context
         })
       }
 
       // Update metrics
       await this.updateMetrics(choice, response, Date.now() - startTime)
-      
+
       return {
         ...response,
         routingDecision: choice
       }
     } catch (error) {
       // Handle fallback routing
-      return await this.handleFailover(request, choice, error)
+      return await this.handleFailover(request, choice, error as Error)
     }
   }
 
@@ -299,15 +297,14 @@ export class HybridIntelligenceRouter {
           context: request.context
         })
       } else {
-        return await this.localRouter.generateResponse({
+        return await this.localRouter.processRequest({
           prompt: request.query,
-          task: request.task,
-          preferredModel: fallbackChoice.model
+          context: request.context
         })
       }
     } catch (fallbackError) {
       return {
-        response: `Both providers failed. Original: ${error.message}, Fallback: ${fallbackError.message}`,
+        response: `Both providers failed. Original: ${error.message}, Fallback: ${(fallbackError as Error).message}`,
         provider: 'error',
         cost: 0,
         tokens: 0,

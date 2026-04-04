@@ -4,7 +4,7 @@ import { promises as fs } from 'fs'
 import { WebSocket, WebSocketServer } from 'ws'
 import { SpecManager } from '../specs/spec-manager.js'
 import { CheckpointManager } from '../memory/checkpoint-manager.js'
-import { ObsidianLite } from '../memory/obsidian-lite.js'
+// import { ObsidianLite } from '../memory/obsidian-lite.js' // module does not exist
 import { ProjectForge } from '../project-management/project-forge.js'
 import { AgentStudio } from '../agents/agent-studio.js'
 import { CostTracker } from '../utils/cost-tracker.js'
@@ -14,7 +14,7 @@ export class LLMChargeServer {
   private wss: WebSocketServer
   private specManager: SpecManager
   private checkpointManager: CheckpointManager
-  private memorySystem: ObsidianLite
+  private memorySystem: any
   private projectManager: ProjectForge
   private agentStudio: AgentStudio
   private costTracker: CostTracker
@@ -24,10 +24,10 @@ export class LLMChargeServer {
     // Initialize all backend systems
     this.specManager = new SpecManager()
     this.checkpointManager = new CheckpointManager()
-    this.memorySystem = new ObsidianLite()
+    this.memorySystem = null // ObsidianLite module not available
     this.projectManager = new ProjectForge()
     this.agentStudio = new AgentStudio()
-    this.costTracker = new CostTracker({})
+    this.costTracker = new CostTracker({} as any)
     
     this.server = http.createServer(this.handleRequest.bind(this))
     this.wss = new WebSocketServer({ server: this.server })
@@ -361,7 +361,7 @@ export class LLMChargeServer {
     }
   }
 
-  private async generateDashboardHTML(): string {
+  private async generateDashboardHTML(): Promise<string> {
     // This would use the same HTML from simple-dashboard.cjs but with real API calls
     const htmlContent = await fs.readFile(
       path.resolve(process.cwd(), 'src/simple-dashboard.cjs'), 

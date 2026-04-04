@@ -1,7 +1,7 @@
 // Context+ integration engine for semantic code intelligence  
 // FEATURE: Advanced semantic analysis with clustering and memory graph
 
-import { CodeSymbol, MemoryNode, SemanticMatch } from '@/core/types'
+import { CodeSymbol, MemoryNode, SemanticMatch, IntelligenceConfig } from '@/core/types'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
@@ -15,7 +15,7 @@ export interface FileTreeNode {
 }
 
 export class ContextPlusEngine {
-  private projectPath: string
+  private projectPath!: string
   private embeddingCache: Map<string, Float32Array>
   private ollamaUrl: string
   private embedModel: string

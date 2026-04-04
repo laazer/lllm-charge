@@ -284,8 +284,8 @@ ${JSON.stringify(pattern, null, 2)}
     )
   }
 
-  getMemoryGraph(): MemoryGraph {
-    return this.memoryGraph
+  getMemoryGraph(): MemoryGraphData {
+    return this.memoryGraphData
   }
 
   getConnectedNotes(noteId: string, maxDepth: number = 2): Note[] {
@@ -326,7 +326,7 @@ ${JSON.stringify(pattern, null, 2)}
     if (format === 'json') {
       return JSON.stringify({
         notes: Array.from(this.notes.values()),
-        memoryGraph: this.memoryGraph
+        memoryGraph: this.memoryGraphData
       }, null, 2)
     }
 
@@ -487,7 +487,7 @@ status: ${note.metadata.status}
 
   private async updateMemoryGraph(note: Note): Promise<void> {
     // Add or update node
-    const existingNodeIndex = this.memoryGraph.nodes.findIndex(n => n.id === note.id)
+    const existingNodeIndex = this.memoryGraphData.nodes.findIndex((n: any) => n.id === note.id)
     const node = {
       id: note.id,
       type: this.inferNodeType(note),
@@ -497,9 +497,9 @@ status: ${note.metadata.status}
     }
 
     if (existingNodeIndex >= 0) {
-      this.memoryGraph.nodes[existingNodeIndex] = node
+      this.memoryGraphData.nodes[existingNodeIndex] = node
     } else {
-      this.memoryGraph.nodes.push(node)
+      this.memoryGraphData.nodes.push(node)
     }
 
     // Add edges for links
@@ -514,11 +514,11 @@ status: ${note.metadata.status}
   }
 
   private removeFromMemoryGraph(noteId: string): void {
-    this.memoryGraph.nodes = this.memoryGraph.nodes.filter(n => n.id !== noteId)
-    this.memoryGraph.edges = this.memoryGraph.edges.filter(e => e.from !== noteId && e.to !== noteId)
+    this.memoryGraphData.nodes = this.memoryGraphData.nodes.filter((n: any) => n.id !== noteId)
+    this.memoryGraphData.edges = this.memoryGraphData.edges.filter((e: any) => e.from !== noteId && e.to !== noteId)
   }
 
-  private inferNodeType(note: Note): MemoryGraph['nodes'][0]['type'] {
+  private inferNodeType(note: Note): MemoryGraphData['nodes'][0]['type'] {
     if (note.tags.includes('project')) return 'project'
     if (note.tags.includes('skill')) return 'skill'
     if (note.tags.includes('pattern')) return 'pattern'
@@ -526,13 +526,13 @@ status: ${note.metadata.status}
     return 'concept'
   }
 
-  private addOrUpdateEdge(from: string, to: string, type: MemoryGraph['edges'][0]['type']): void {
-    const existingEdge = this.memoryGraph.edges.find(e => e.from === from && e.to === to && e.type === type)
-    
+  private addOrUpdateEdge(from: string, to: string, type: MemoryGraphData['edges'][0]['type']): void {
+    const existingEdge = this.memoryGraphData.edges.find((e: any) => e.from === from && e.to === to && e.type === type)
+
     if (existingEdge) {
       existingEdge.weight = Math.min(1.0, existingEdge.weight + 0.1)
     } else {
-      this.memoryGraph.edges.push({
+      this.memoryGraphData.edges.push({
         from,
         to,
         type,

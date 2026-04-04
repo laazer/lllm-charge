@@ -112,7 +112,7 @@ export class GDScriptMCPExtension {
       })
       .sort((a, b) => {
         // Prioritize by symbol type relevance
-        const typeOrder = { 'class': 0, 'function': 1, 'signal': 2, 'variable': 3 }
+        const typeOrder: Record<string, number> = { 'class': 0, 'function': 1, 'signal': 2, 'variable': 3 }
         return (typeOrder[a.type] || 4) - (typeOrder[b.type] || 4)
       })
       .slice(0, maxSymbols)
@@ -260,7 +260,7 @@ export class GDScriptMCPExtension {
     const lines = content.split('\\n')
     for (const line of lines) {
       // Parse node definitions
-      const nodeMatch = line.match(/^\\[node name="([^"]+)".*type="([^"]+)"/)
+      const nodeMatch = line.match(new RegExp('^\\\\[node name="([^"]+)".*type="([^"]+)"'))
       if (nodeMatch) {
         nodes.push({
           name: nodeMatch[1],
@@ -269,7 +269,7 @@ export class GDScriptMCPExtension {
       }
 
       // Parse signal connections
-      const connectionMatch = line.match(/^\\[connection signal="([^"]+)".*from="([^"]+)".*to="([^"]+)".*method="([^"]+)"/)
+      const connectionMatch = line.match(new RegExp('^\\\\[connection signal="([^"]+)".*from="([^"]+)".*to="([^"]+)".*method="([^"]+)"'))
       if (connectionMatch) {
         signals.push({
           signal: connectionMatch[1],

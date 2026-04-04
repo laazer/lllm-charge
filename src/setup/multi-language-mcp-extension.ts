@@ -82,7 +82,7 @@ export class MultiLanguageMCPExtension {
         const bExact = b.name.toLowerCase() === normalizedQuery ? 0 : 1
         if (aExact !== bExact) return aExact - bExact
         
-        const typeOrder = { 'class': 0, 'interface': 1, 'struct': 1, 'function': 2, 'method': 3 }
+        const typeOrder: Record<string, number> = { 'class': 0, 'interface': 1, 'struct': 1, 'function': 2, 'method': 3 }
         return (typeOrder[a.type] || 9) - (typeOrder[b.type] || 9)
       })
       .slice(0, limit)
@@ -519,7 +519,7 @@ export class MultiLanguageMCPExtension {
     }
     
     // Boost score for important symbol types
-    const typeBonus = { 'class': 2, 'interface': 2, 'struct': 2, 'function': 1 }
+    const typeBonus: Record<string, number> = { 'class': 2, 'interface': 2, 'struct': 2, 'function': 1 }
     score += typeBonus[symbol.type] || 0
     
     return score

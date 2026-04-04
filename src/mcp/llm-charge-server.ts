@@ -21,13 +21,13 @@ import { ReactDevTools } from '../react-tools'
 
 export class LLMChargeServer {
   private server: Server
-  private intelligence: UnifiedIntelligence
-  private docsIntelligence: DocsIntelligence
-  private reasoning: HybridReasoning
-  private costTracker: CostTracker
-  private commandHandler: CommonCommandHandler
-  private knowledgeBase: KnowledgeBase
-  private reactDevTools: ReactDevTools
+  private intelligence!: UnifiedIntelligence
+  private docsIntelligence!: DocsIntelligence
+  private reasoning!: HybridReasoning
+  private costTracker!: CostTracker
+  private commandHandler!: CommonCommandHandler
+  private knowledgeBase!: KnowledgeBase
+  private reactDevTools!: ReactDevTools
   private initialized = false
 
   constructor(private config: LLMChargeConfig, private projectPath: string) {
@@ -61,7 +61,7 @@ export class LLMChargeServer {
     console.log('Initializing LLM-Charge server...')
     
     // Initialize shared knowledge base
-    this.knowledgeBase = new KnowledgeBase(this.config.intelligence.knowledgeBase.path || './knowledge.db')
+    this.knowledgeBase = new KnowledgeBase((this.config.intelligence as any).knowledgeBase?.path || './knowledge.db')
     await this.knowledgeBase.initialize()
     
     // Initialize intelligence engines
@@ -634,7 +634,7 @@ export class LLMChargeServer {
       cost: response.cost,
       tokens: response.tokensUsed,
       model: response.modelUsed,
-      latencyMs: response.executionTime || 0
+      latencyMs: response.executionTimeMs || 0
     })
 
     return {

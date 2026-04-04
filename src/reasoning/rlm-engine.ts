@@ -1,7 +1,7 @@
 // RLM integration engine for recursive reasoning with local-first approach
 // FEATURE: Recursive language model execution with environment isolation
 
-import { LLMRequest, LLMResponse, ReasoningSession, ReasoningIteration, CodeBlock, ExecutionResult } from '@/core/types'
+import { LLMRequest, LLMResponse, ReasoningSession, ReasoningIteration, CodeBlock, ExecutionResult, ReasoningConfig } from '@/core/types'
 import { PythonShell } from 'python-shell'
 import * as path from 'path'
 import * as fs from 'fs/promises'
@@ -68,28 +68,21 @@ export class RLMEngine {
 
     const fullPrompt = context ? `Context:\n${context}\n\nQuery: ${query}` : query
 
-    return new Promise((resolve, reject) => {
-      const options = {
-        mode: 'text' as const,
-        pythonPath: this.pythonPath,
-        scriptPath: path.dirname(this.rlmScript),
-        args: [
-          '--config', JSON.stringify(rlmConfig),
-          '--query', fullPrompt,
-          '--session-id', sessionId
-        ]
-      }
+    const options = {
+      mode: 'text' as const,
+      pythonPath: this.pythonPath,
+      scriptPath: path.dirname(this.rlmScript),
+      args: [
+        '--config', JSON.stringify(rlmConfig),
+        '--query', fullPrompt,
+        '--session-id', sessionId
+      ]
+    }
 
-      PythonShell.run(path.basename(this.rlmScript), options, (err, results) => {
-        if (err) {
-          reject(new Error(`RLM execution failed: ${err.message}`))
-        } else {
-          const output = results?.join('\n') || ''
-          this.parseRLMOutput(sessionId, output)
-          resolve(output)
-        }
-      })
-    })
+    const results = await PythonShell.run(path.basename(this.rlmScript), options)
+    const output = results?.join('\n') || ''
+    this.parseRLMOutput(sessionId, output)
+    return output
   }
 
   async getSession(sessionId: string): Promise<ReasoningSession | null> {
@@ -175,16 +168,12 @@ if __name__ == '__main__':
   }
 
   private async testPythonEnvironment(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      PythonShell.run('--version', {}, (err, results) => {
-        if (err) {
-          reject(new Error('Python environment not available'))
-        } else {
-          console.log('Python environment ready:', results?.[0])
-          resolve()
-        }
-      })
-    })
+    try {
+      const results = await PythonShell.run('--version', {})
+      console.log('Python environment ready:', results?.[0])
+    } catch {
+      throw new Error('Python environment not available')
+    }
   }
 
   private getEnvironmentKwargs(): Record<string, any> {

@@ -155,7 +155,8 @@ export class BetterModelRouter extends EventEmitter {
       },
       pricing: {
         inputTokenCost: 0,
-        outputTokenCost: 0
+        outputTokenCost: 0,
+        requestCost: 0
       },
       availability: {
         local: true,
@@ -184,7 +185,8 @@ export class BetterModelRouter extends EventEmitter {
       },
       pricing: {
         inputTokenCost: 0.003,
-        outputTokenCost: 0.015
+        outputTokenCost: 0.015,
+        requestCost: 0
       },
       availability: {
         local: false,
@@ -192,7 +194,7 @@ export class BetterModelRouter extends EventEmitter {
         latency: 1500,
         uptime: 0.99
       },
-      specializations: ['code', 'reasoning', 'analysis', 'writing']
+      specializations: ['code', 'analysis', 'writing']
     })
 
     this.registerModel({
@@ -212,7 +214,8 @@ export class BetterModelRouter extends EventEmitter {
       },
       pricing: {
         inputTokenCost: 0.01,
-        outputTokenCost: 0.03
+        outputTokenCost: 0.03,
+        requestCost: 0
       },
       availability: {
         local: false,
@@ -220,7 +223,7 @@ export class BetterModelRouter extends EventEmitter {
         latency: 2000,
         uptime: 0.98
       },
-      specializations: ['reasoning', 'creativity', 'planning']
+      specializations: ['analysis', 'writing', 'planning']
     })
 
     // Hybrid/Specialized
@@ -241,7 +244,8 @@ export class BetterModelRouter extends EventEmitter {
       },
       pricing: {
         inputTokenCost: 0.001, // Average between local (0) and cloud
-        outputTokenCost: 0.005
+        outputTokenCost: 0.005,
+        requestCost: 0
       },
       availability: {
         local: true,

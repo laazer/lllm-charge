@@ -46,7 +46,7 @@ export class DocsIntelligence {
   private devDocsPath: string
   private gpt4allPath: string
   private knowledgeBase: KnowledgeBase
-  private smartCache: SmartDocsCache
+  private smartCache!: SmartDocsCache
   private cachedDocs: Map<string, DevDoc[]> = new Map()
   
   constructor(

@@ -318,7 +318,7 @@ func has_item(item_id: String) -> bool:
       }
     }
 
-    const template = templates[componentType]
+    const template = (templates as Record<string, any>)[componentType]
     if (!template) {
       return {
         componentType,

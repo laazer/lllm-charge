@@ -191,7 +191,7 @@ export class RealTimeDashboard extends EventEmitter {
   async getCostAnalysis(timeframe: '1h' | '24h' | '7d' | '30d' = '24h'): Promise<CostMetrics> {
     const costData = await this.costTracker.getMetrics()
     // Note: getTrends and getCostBreakdown methods need to be implemented in CostTracker
-    const trends = [] // await this.costTracker.getTrends(timeframe)
+    const trends: any[] = [] // await this.costTracker.getTrends(timeframe)
     const breakdown = {} // await this.costTracker.getCostBreakdown()
 
     return {
@@ -744,7 +744,7 @@ export class RealTimeDashboard extends EventEmitter {
       if (successRate < 95) {
         recommendations.push({
           type: 'performance',
-          priority: 'critical',
+          priority: 'high',
           title: 'Improve Reliability',
           description: `Success rate is ${successRate}%. Implement retry logic and failover mechanisms.`,
           expectedImpact: `Increase success rate to 99%+`,

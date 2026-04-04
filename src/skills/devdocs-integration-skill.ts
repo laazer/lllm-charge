@@ -245,7 +245,7 @@ export class DevDocsIntegrationSkill {
           console.log(`📥 Downloaded documentation for ${language}: ${topDocs.join(', ')}`)
         }
       } catch (error) {
-        console.warn(`⚠️  Could not auto-download documentation for ${language}:`, error.message)
+        console.warn(`⚠️  Could not auto-download documentation for ${language}:`, (error as Error).message)
       }
     }
   }

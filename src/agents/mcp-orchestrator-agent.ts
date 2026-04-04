@@ -378,7 +378,7 @@ export class MCPOrchestratorAgent {
       
       console.log('✅ Proactive analysis complete')
     } catch (error) {
-      console.warn('⚠️  Proactive analysis had issues:', error.message)
+      console.warn('⚠️  Proactive analysis had issues:', (error as Error).message)
     }
   }
 
@@ -775,7 +775,7 @@ export class MCPOrchestratorAgent {
     const complexityMultiplier = { 'simple': 1, 'moderate': 2, 'complex': 4, 'enterprise': 8 }
     const baseCallsPerDay = 50
     
-    const apiCallsPerDay = baseCallsPerDay * (complexityMultiplier[architecture.overallComplexity] || 2) * languageCount
+    const apiCallsPerDay = baseCallsPerDay * ((complexityMultiplier as Record<string, number>)[architecture.overallComplexity] || 2) * languageCount
     const estimatedMonthlyCost = apiCallsPerDay * 30 * 0.002 // $0.002 per call
     
     return {

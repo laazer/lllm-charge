@@ -3,12 +3,12 @@
 
 import { CodeSymbol, CodeRelation, SemanticMatch, NodeKind, EdgeKind } from '@/core/types'
 import { Database } from 'sqlite3'
-import * as TreeSitter from 'web-tree-sitter'
+import Parser from 'web-tree-sitter'
 
 export class CodeGraphEngine {
-  private db: Database
-  private parser: TreeSitter.Parser
-  private languages: Map<string, TreeSitter.Language>
+  private db!: Database
+  private parser!: Parser
+  private languages: Map<string, Parser.Language>
   private projectPath!: string
 
   constructor(private config: any) {
@@ -207,8 +207,8 @@ export class CodeGraphEngine {
   }
 
   private async initializeParser(): Promise<void> {
-    await TreeSitter.init()
-    this.parser = new TreeSitter()
+    await Parser.init()
+    this.parser = new Parser()
   }
 
   private async indexProject(): Promise<void> {

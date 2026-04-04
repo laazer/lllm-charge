@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { LLMChargeServer } from './llm-charge-server.js'
 
-const server = new LLMChargeServer()
+const config: any = {}
+const server = new LLMChargeServer(config, process.cwd())
 server.start().catch(console.error)

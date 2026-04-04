@@ -250,7 +250,7 @@ export class KnowledgeBase {
     return results.slice(1) // Remove the original symbol
   }
 
-  async searchSimilar(query: string, options: KnowledgeQuery = {}): Promise<QueryResult> {
+  async searchSimilar(query: string, options: Partial<KnowledgeQuery> = {}): Promise<QueryResult> {
     const startTime = Date.now()
     
     try {

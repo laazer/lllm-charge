@@ -503,6 +503,30 @@ console.log('Total time:', results.totalTime);
     }
   }
 
+  private async startOllama(): Promise<void> {
+    spawn('ollama', ['serve'], { detached: true, stdio: 'ignore' }).unref()
+    await new Promise(resolve => setTimeout(resolve, 2000))
+  }
+
+  private async installOllama(warnings: string[], errors: string[]): Promise<void> {
+    warnings.push('Automatic Ollama installation not supported on this platform. Install manually from https://ollama.ai')
+  }
+
+  private async downloadRecommendedModels(warnings: string[]): Promise<void> {
+    for (const model of this.enhancedConfig.downloadModels) {
+      try {
+        execSync(`ollama pull ${model}`, { stdio: 'pipe' })
+        console.log(`✅ Downloaded model: ${model}`)
+      } catch {
+        warnings.push(`Could not download model: ${model}`)
+      }
+    }
+  }
+
+  private async generateVSCodeConfig(warnings: string[]): Promise<void> {
+    warnings.push('VS Code MCP config generation not yet implemented')
+  }
+
   private printEnhancedSummary(warnings: string[]): void {
     console.log('\\n🎉 ENHANCED MCP Setup Complete!\\n')
     
