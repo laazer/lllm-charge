@@ -1,0 +1,40 @@
+{
+  "maxConcurrentAgents": 10,
+  "defaultTimeout": 300000,
+  "securityPolicy": {
+    "allowedOperations": ["read", "analyze", "generate"],
+    "blockedOperations": ["write", "execute", "network"],
+    "sandboxed": true,
+    "maxMemory": "512MB",
+    "maxCpuTime": 60000
+  },
+  "agentTypes": {
+    "code-reviewer": {
+      "capabilities": ["static-analysis", "security-scan"],
+      "tools": ["eslint", "sonarjs", "semgrep"]
+    },
+    "document-analyst": {
+      "capabilities": ["text-analysis", "summarization"],
+      "tools": ["pdf-parser", "markdown-processor"]
+    },
+    "workflow-designer": {
+      "capabilities": ["process-analysis", "automation-design"],
+      "tools": ["flowchart-generator", "task-optimizer"]
+    },
+    "system-architect": {
+      "capabilities": ["architecture-analysis", "performance-optimization"],
+      "tools": ["dependency-analyzer", "performance-profiler"]
+    }
+  },
+  "resourceLimits": {
+    "maxWorkspaceSize": "1GB",
+    "maxFileSize": "100MB",
+    "maxProcessingTime": 180000,
+    "allowedFileTypes": [".js", ".ts", ".json", ".md", ".txt", ".py", ".java", ".cpp", ".c", ".h"]
+  },
+  "networking": {
+    "allowOutbound": false,
+    "allowedDomains": [],
+    "blockedPorts": [22, 23, 135, 139, 445]
+  }
+}

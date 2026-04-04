@@ -1,0 +1,114 @@
+# Production Docker Compose for LLM-Charge
+version: '3.8'
+
+services:
+  llm-charge:
+    build: 
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: llm-charge-production
+    restart: unless-stopped
+    
+    # Environment variables for production
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_PATH=/app/data/llm-charge.db
+      - LOGS_PATH=/app/logs
+      
+    # Expose ports
+    ports:
+      - "3001:3001"
+    
+    # Volume mounts for persistent data
+    volumes:
+      - llm-charge-data:/app/data
+      - llm-charge-logs:/app/logs
+      - llm-charge-config:/app/config
+    
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { hostname: 'localhost', port: 3001, path: '/api/metrics', timeout: 2000 }; const req = http.request(options, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Reverse proxy for production (nginx)
+  nginx:
+    image: nginx:alpine
+    container_name: llm-charge-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - llm-charge
+    profiles:
+      - with-proxy
+
+  # Optional: Ollama service for local LLM support
+  ollama:
+    image: ollama/ollama:latest
+    container_name: llm-charge-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    profiles:
+      - with-ollama
+
+# Named volumes for persistence
+volumes:
+  llm-charge-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data
+  
+  llm-charge-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./logs
+  
+  llm-charge-config:
+    driver: local
+    driver_opts:
+      type: none  
+      o: bind
+      device: ./config
+
+  ollama-data:
+    driver: local
+
+# Networks for service communication
+networks:
+  default:
+    name: llm-charge-network
+    driver: bridge

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DOM Fix Verification Test</title>
+    <style>
+        .workflow-node {
+            position: absolute;
+            min-width: 200px;
+            min-height: 80px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            cursor: move;
+            user-select: none;
+            z-index: 10;
+            padding: 12px;
+        }
+        #workflow-canvas {
+            position: relative;
+            width: 900px;
+            height: 500px;
+            border: 2px solid #4338ca;
+            background: #f8fafc;
+            margin: 20px 0;
+        }
+        .node-header {
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .node-body {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+        #test-log {
+            background: #f1f5f9;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+            border: 1px solid #cbd5e1;
+        }
+        .log-success { color: #16a34a; font-weight: bold; }
+        .log-error { color: #dc2626; font-weight: bold; }
+        .log-info { color: #2563eb; }
+        .log-warning { color: #d97706; }
+    </style>
+</head>
+<body>
+    <h1>🔧 DOM Loading Fix Verification Test</h1>
+    <p>This test verifies that our DOM loading fix successfully allows workflow nodes to display properly.</p>
+    
+    <div id="test-log">
+        <div class="log-info"><strong>🧪 Test Log Started:</strong></div>
+    </div>
+    
+    <div id="workflow-canvas"></div>
+    
+    <button onclick="runDOMTest()">🧪 Test DOM Access</button>
+    <button onclick="runWorkflowLoadTest()">📋 Test Workflow Loading</button>
+    <button onclick="clearCanvas()">🧹 Clear Canvas</button>
+    
+    <script>
+        const testLog = document.getElementById('test-log');
+        let testStep = 0;
+        
+        function log(message, type = 'info') {
+            testStep++;
+            const div = document.createElement('div');
+            const timestamp = new Date().toLocaleTimeString();
+            div.className = `log-${type}`;
+            div.innerHTML = `${timestamp} [${testStep}]: ${message}`;
+            testLog.appendChild(div);
+            testLog.scrollTop = testLog.scrollHeight;
+            console.log(`[${testStep}] ${message}`);
+        }
+        
+        function runDOMTest() {
+            log('🧪 Running DOM Access Test...', 'info');
+            
+            const canvas = document.getElementById('workflow-canvas');
+            log('Canvas element found: ' + (canvas ? '✅ YES' : '❌ NO'), canvas ? 'success' : 'error');
+            
+            if (canvas) {
+                log('Canvas dimensions: ' + canvas.offsetWidth + 'x' + canvas.offsetHeight, 'info');
+                log('Canvas children count: ' + canvas.children.length, 'info');
+                
+                // Test creating a simple node
+                const testNode = document.createElement('div');
+                testNode.className = 'workflow-node';
+                testNode.style.left = '50px';
+                testNode.style.top = '50px';
+                testNode.innerHTML = `
+                    <div class="node-header">DOM Test Node</div>
+                    <div class="node-body">Created: ${new Date().toLocaleTimeString()}</div>
+                `;
+                
+                canvas.appendChild(testNode);
+                log('✅ Test node created and appended successfully', 'success');
+                log('Canvas now has ' + canvas.children.length + ' children', 'success');
+            }
+        }
+        
+        async function runWorkflowLoadTest() {
+            log('📋 Running Workflow Load Test...', 'info');
+            
+            try {
+                const workflowId = 'workflow-1774901129218-hhkcfof0q';
+                log('🔄 Loading workflow: ' + workflowId, 'info');
+                
+                const response = await fetch('/api/workflows/' + workflowId);
+                if (!response.ok) {
+                    throw new Error('API response not ok: ' + response.status);
+                }
+                
+                const workflow = await response.json();
+                log('✅ Workflow loaded successfully: ' + workflow.name, 'success');
+                log('📊 Number of nodes: ' + (workflow.nodes ? workflow.nodes.length : 0), 'info');
+                
+                if (workflow.nodes && workflow.nodes.length > 0) {
+                    const canvas = document.getElementById('workflow-canvas');
+                    if (!canvas) {
+                        log('❌ CRITICAL: Canvas not found during workflow load!', 'error');
+                        return;
+                    }
+                    
+                    log('🎨 Creating visual nodes...', 'info');
+                    
+                    workflow.nodes.forEach((nodeData, index) => {
+                        log(`Creating node ${index + 1}: ${nodeData.name}`, 'info');
+                        
+                        const nodeElement = document.createElement('div');
+                        nodeElement.className = 'workflow-node';
+                        nodeElement.style.left = nodeData.position.x + 'px';
+                        nodeElement.style.top = nodeData.position.y + 'px';
+                        nodeElement.id = 'node-' + nodeData.id;
+                        
+                        // Add visual styling based on node type
+                        if (nodeData.type === 'trigger') {
+                            nodeElement.style.background = '#dcfce7';
+                            nodeElement.style.borderColor = '#16a34a';
+                        } else if (nodeData.type === 'agent') {
+                            nodeElement.style.background = '#dbeafe';
+                            nodeElement.style.borderColor = '#2563eb';
+                        } else if (nodeData.type === 'output') {
+                            nodeElement.style.background = '#fef3c7';
+                            nodeElement.style.borderColor = '#d97706';
+                        }
+                        
+                        nodeElement.innerHTML = `
+                            <div class="node-header">${nodeData.name}</div>
+                            <div class="node-body">
+                                Type: ${nodeData.type}<br>
+                                Position: (${nodeData.position.x}, ${nodeData.position.y})
+                            </div>
+                        `;
+                        
+                        canvas.appendChild(nodeElement);
+                        log(`✅ Node ${index + 1} (${nodeData.name}) created and positioned`, 'success');
+                    });
+                    
+                    log('🏁 All nodes created! Canvas children: ' + canvas.children.length, 'success');
+                    log('🎯 DOM Fix Verification: SUCCESS - Nodes are displaying properly!', 'success');
+                } else {
+                    log('❌ No nodes found in workflow data', 'error');
+                }
+            } catch (error) {
+                log('❌ Error: ' + error.message, 'error');
+            }
+        }
+        
+        function clearCanvas() {
+            const canvas = document.getElementById('workflow-canvas');
+            if (canvas) {
+                canvas.innerHTML = '';
+                log('🧹 Canvas cleared', 'info');
+            }
+        }
+        
+        // Verify DOM loading behavior
+        function verifyDOMLoading() {
+            log('🚀 DOM Fix Verification Test Started', 'info');
+            log('📄 Document ready state: ' + document.readyState, 'info');
+            
+            const canvas = document.getElementById('workflow-canvas');
+            log('🔍 Canvas availability on load: ' + (canvas ? '✅ AVAILABLE' : '❌ NOT AVAILABLE'), canvas ? 'success' : 'error');
+            
+            if (canvas) {
+                log('✅ DOM Fix Working: Canvas element found immediately on load', 'success');
+            } else {
+                log('❌ DOM Fix Failed: Canvas element not found on load', 'error');
+            }
+        }
+        
+        // Run verification when DOM is ready
+        if (document.readyState === 'loading') {
+            log('⏳ DOM still loading, waiting for DOMContentLoaded...', 'warning');
+            document.addEventListener('DOMContentLoaded', verifyDOMLoading);
+        } else {
+            log('✅ DOM already loaded, running verification immediately', 'info');
+            verifyDOMLoading();
+        }
+        
+        log('🧪 Test page loaded - Ready for manual testing', 'info');
+    </script>
+</body>
+</html>

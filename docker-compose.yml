@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  llm-charge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"  # Dashboard
+      - "3002:3002"  # WebSocket
+      - "3003:3003"  # API
+    environment:
+      - NODE_ENV=production
+      - DATABASE_TYPE=sqlite
+      - DATABASE_PATH=/app/data/llm-charge.db
+      - DASHBOARD_PORT=3001
+      - WS_PORT=3002
+      - API_PORT=3003
+      - LOG_LEVEL=info
+      - CACHE_DIR=/app/data/cache
+      - AGENT_WORKSPACE_DIR=/app/data/agent-workspace
+    volumes:
+      - llm-charge-data:/app/data
+      - llm-charge-logs:/app/logs
+      - ./config:/app/config:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - llm-charge-network
+
+  # Optional: Redis for distributed caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - llm-charge-network
+    profiles:
+      - redis
+
+  # Optional: PostgreSQL for production database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=llm_charge
+      - POSTGRES_USER=llm_charge
+      - POSTGRES_PASSWORD=secure_password_here
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - llm-charge-network
+    profiles:
+      - postgres
+
+  # Optional: Ollama for local LLM serving
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - llm-charge-network
+    profiles:
+      - ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  llm-charge-data:
+    driver: local
+  llm-charge-logs:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  ollama-data:
+    driver: local
+
+networks:
+  llm-charge-network:
+    driver: bridge

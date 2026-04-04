@@ -23,10 +23,10 @@ import { LLMChargeConfig } from './core/types'
 
 export class LLMCharge {
   private server: LLMChargeServer
-  private intelligence: UnifiedIntelligence
-  private reasoning: HybridReasoning
+  private intelligence!: UnifiedIntelligence
+  private reasoning!: HybridReasoning
   private router: LocalLLMRouter
-  private optimizer: LLMOptimizationEngine
+  private optimizer!: LLMOptimizationEngine
   private costTracker: CostTracker
   private initialized = false
 

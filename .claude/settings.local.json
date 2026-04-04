@@ -17,7 +17,10 @@
       "Bash(npx jest tests/unit --coverage --testTimeout=5000)",
       "Bash(find tests -name \"*.test.ts\" -exec basename {})",
       "Bash(find src -name \"*.ts\" -exec basename {})",
-      "Bash(find . -name package.json -exec cat {} ;)"
+      "Bash(find . -name package.json -exec cat {} ;)",
+      "Bash(grep -E \"\\\\.\\(json|js|ts\\)$|^\\\\.\")",
+      "Bash(rsync -av --exclude='node_modules' --exclude='.git' --exclude='dist' --exclude='coverage' --exclude='.claude' /Users/jacobbrandt/Downloads/llm-charge-20260403_172647/ /Users/jacobbrandt/workspace/lllm-charge/)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

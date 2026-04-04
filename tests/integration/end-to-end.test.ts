@@ -550,7 +550,7 @@ app.listen(3000, () => {
 
   async function mockServerComponents(server: LLMChargeServer) {
     // Mock all server components for testing
-    ;(server as any).intelligence = createMockIntelligence()
+    (server as any).intelligence = createMockIntelligence()
     ;(server as any).docsIntelligence = createMockDocsIntelligence()
     ;(server as any).reasoning = {
       processQuery: jest.fn().mockResolvedValue({

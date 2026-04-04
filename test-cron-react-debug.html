@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cron React Debug</title>
+</head>
+<body>
+    <h1>Test Cron React Debug</h1>
+    <button onclick="testDirectAPI()">Test Direct Backend API (Port 3001)</button>
+    <button onclick="testReactProxyAPI()">Test React Proxy API (Port 3000)</button>
+    <button onclick="navigateToReactCron()">Navigate to React Cron Page</button>
+    <button onclick="checkConsoleLogs()">Check Browser Console</button>
+    <div id="results"></div>
+
+    <script>
+        async function testDirectAPI() {
+            const results = document.getElementById('results');
+            try {
+                const response = await fetch('http://localhost:3001/api/cron/jobs');
+                const data = await response.json();
+                results.innerHTML = `
+                    <h3>Direct Backend API (Port 3001)</h3>
+                    <p>Success: ${data.success}</p>
+                    <p>Jobs count: ${data.jobs?.length}</p>
+                    <p>First job name: ${data.jobs?.[0]?.name}</p>
+                    <p>First job has proper data: ${!!data.jobs?.[0]?.name}</p>
+                    <pre>${JSON.stringify(data.jobs?.[0], null, 2)}</pre>
+                `;
+            } catch (error) {
+                results.innerHTML = `<h3>Error testing direct API:</h3><p>${error.message}</p>`;
+            }
+        }
+
+        async function testReactProxyAPI() {
+            const results = document.getElementById('results');
+            try {
+                const response = await fetch('http://localhost:3000/api/cron/jobs');
+                const data = await response.json();
+                results.innerHTML = `
+                    <h3>React Proxy API (Port 3000)</h3>
+                    <p>Success: ${data.success}</p>
+                    <p>Jobs count: ${data.jobs?.length}</p>
+                    <p>First job name: ${data.jobs?.[0]?.name}</p>
+                    <p>First job has proper data: ${!!data.jobs?.[0]?.name}</p>
+                    <pre>${JSON.stringify(data.jobs?.[0], null, 2)}</pre>
+                `;
+            } catch (error) {
+                results.innerHTML = `<h3>Error testing React proxy API:</h3><p>${error.message}</p>`;
+            }
+        }
+
+        function navigateToReactCron() {
+            console.log('Opening React Cron page...');
+            window.open('http://localhost:3000/cron', '_blank');
+        }
+
+        function checkConsoleLogs() {
+            console.log('=== TESTING CONSOLE OUTPUT ===');
+            console.log('If you see this, console logging is working');
+            console.log('Now check the React cron page for debug output');
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <h3>Console Logging Test</h3>
+                <p>Check browser console for test output.</p>
+                <p>Then navigate to React cron page and look for:</p>
+                <ul>
+                    <li>DEBUG: jobsResponse received: [object]</li>
+                    <li>DEBUG: Setting real jobs data: [array]</li>
+                    <li>DEBUG getFilteredJobs: jobs array: [array]</li>
+                </ul>
+                <p><strong>If you don't see these logs, the React component may not be executing properly.</strong></p>
+            `;
+        }
+    </script>
+</body>
+</html>

@@ -123,7 +123,7 @@ describe('LLM-Charge Performance Tests', () => {
 
       for (let i = 0; i < testPatterns; i++) {
         const template = templates[Math.floor(Math.random() * templates.length)]
-        let command = template
+        const command = template
           .replace('{{action}}', actions[Math.floor(Math.random() * actions.length)])
           .replace('{{type}}', types[Math.floor(Math.random() * types.length)])
           .replace('{{name}}', names[Math.floor(Math.random() * names.length)])

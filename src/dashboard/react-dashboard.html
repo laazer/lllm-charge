@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM-Charge Dashboard - React v1.0</title>
+    
+    <!-- React CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --bg: #ffffff;
+            --text: #1f2937;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+        .logo { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .nav { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .nav-btn { background: none; border: none; padding: 0.75rem 1rem; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s ease; }
+        .nav-btn:hover, .nav-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .section { min-height: 400px; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .status-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; text-align: center; }
+        .status-card h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
+        .status-card-value { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .data-list { max-height: 600px; overflow-y: auto; }
+        .data-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; }
+        .data-item h4 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
+        .data-item p { color: var(--text-secondary); font-size: 0.875rem; line-height: 1.5; }
+        .loading { text-align: center; padding: 2rem; color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        const Dashboard = () => {
+            const [activeSection, setActiveSection] = useState('overview');
+            const [data, setData] = useState({
+                specs: [],
+                projects: [],
+                agents: [],
+                loading: { specs: true, projects: true, agents: true }
+            });
+
+            const fetchData = async (endpoint) => {
+                try {
+                    console.log(`Fetching ${endpoint}...`);
+                    const response = await fetch(`/api/${endpoint}`);
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log(`${endpoint} loaded:`, result.length, 'items');
+                        return result;
+                    }
+                    console.error(`Failed to fetch ${endpoint}:`, response.status);
+                    return [];
+                } catch (error) {
+                    console.error(`Error fetching ${endpoint}:`, error);
+                    return [];
+                }
+            };
+
+            useEffect(() => {
+                const loadAllData = async () => {
+                    console.log('🚀 React Dashboard Loading...');
+                    
+                    const [specs, projects, agents] = await Promise.all([
+                        fetchData('specs'),
+                        fetchData('projects'),
+                        fetchData('agents')
+                    ]);
+                    
+                    setData({
+                        specs,
+                        projects,
+                        agents,
+                        loading: { specs: false, projects: false, agents: false }
+                    });
+                    
+                    console.log('✅ All data loaded successfully');
+                };
+                
+                loadAllData();
+            }, []);
+
+            const renderOverview = () => (
+                <div>
+                    <h2>📊 Overview</h2>
+                    <div className="status-grid">
+                        <div className="status-card">
+                            <h3>Total Specifications</h3>
+                            <div className="status-card-value">{data.specs.length}</div>
+                        </div>
+                        <div className="status-card">
+                            <h3>Projects</h3>
+                            <div className="status-card-value">{data.projects.length}</div>
+                        </div>
+                        <div className="status-card">
+                            <h3>Agents</h3>
+                            <div className="status-card-value">{data.agents.length}</div>
+                        </div>
+                        <div className="status-card">
+                            <h3>Server Status</h3>
+                            <div className="status-card-value" style={{color: 'var(--success)'}}>✅ Online</div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderSpecs = () => (
+                <div>
+                    <h2>📋 Specifications</h2>
+                    <div className="data-list">
+                        {data.loading.specs ? (
+                            <div className="loading">Loading specifications...</div>
+                        ) : data.specs.length === 0 ? (
+                            <div className="loading">No specifications found</div>
+                        ) : (
+                            data.specs.map(spec => (
+                                <div key={spec.id} className="data-item">
+                                    <h4>{spec.title}</h4>
+                                    <p>{spec.description ? 
+                                        (spec.description.length > 200 ? 
+                                            spec.description.substring(0, 200) + '...' : 
+                                            spec.description) : 
+                                        'No description'
+                                    }</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+
+            const renderProjects = () => (
+                <div>
+                    <h2>📊 Projects</h2>
+                    <div className="data-list">
+                        {data.loading.projects ? (
+                            <div className="loading">Loading projects...</div>
+                        ) : data.projects.length === 0 ? (
+                            <div className="loading">No projects found</div>
+                        ) : (
+                            data.projects.map(project => (
+                                <div key={project.id} className="data-item">
+                                    <h4>{project.name}</h4>
+                                    <p>{project.description || 'No description'}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+
+            const renderAgents = () => (
+                <div>
+                    <h2>🤖 Agents</h2>
+                    <div className="data-list">
+                        {data.loading.agents ? (
+                            <div className="loading">Loading agents...</div>
+                        ) : data.agents.length === 0 ? (
+                            <div className="loading">No agents found</div>
+                        ) : (
+                            data.agents.map(agent => (
+                                <div key={agent.id} className="data-item">
+                                    <h4>{agent.name}</h4>
+                                    <p>{agent.description || 'No description'}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+
+            const renderSection = () => {
+                switch(activeSection) {
+                    case 'overview': return renderOverview();
+                    case 'specs': return renderSpecs();
+                    case 'projects': return renderProjects();
+                    case 'agents': return renderAgents();
+                    default: return renderOverview();
+                }
+            };
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <div className="logo">🚀 LLM-Charge Dashboard</div>
+                        <div>React • No Cache Issues</div>
+                    </div>
+
+                    <nav className="nav">
+                        {[
+                            { id: 'overview', label: '📊 Overview' },
+                            { id: 'specs', label: '📋 Specs' },
+                            { id: 'projects', label: '📊 Projects' },
+                            { id: 'agents', label: '🤖 Agents' }
+                        ].map(section => (
+                            <button
+                                key={section.id}
+                                className={`nav-btn ${activeSection === section.id ? 'active' : ''}`}
+                                onClick={() => setActiveSection(section.id)}
+                            >
+                                {section.label}
+                            </button>
+                        ))}
+                    </nav>
+
+                    <div className="section">
+                        {renderSection()}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<Dashboard />, document.getElementById('root'));
+        console.log('✅ React Dashboard Mounted Successfully');
+    </script>
+</body>
+</html>
