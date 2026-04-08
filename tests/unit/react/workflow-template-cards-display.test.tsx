@@ -1,11 +1,12 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import Workflows from '../../../src/react/pages/Workflows'
 import { apiClient } from '../../../src/react/lib/api-client'
 import { ThemeProvider } from '../../../src/react/store/theme-store'
+import { ProjectProvider } from '../../../src/react/store/project-store'
 
 // Mock the API client
 jest.mock('../../../src/react/lib/api-client', () => ({
@@ -59,11 +60,23 @@ const createTestWrapper = () => {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          {children}
+          <ProjectProvider>{children}</ProjectProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </BrowserRouter>
   )
+}
+
+function templatesOpenButton() {
+  return screen.getByRole('button', { name: /^templates$/i })
+}
+
+function openViewExamplesFromTemplatesCard() {
+  const heading = screen.getByRole('heading', { level: 2, name: 'Workflow Templates' })
+  const card = heading.closest('.rounded-lg')
+  if (!card) throw new Error('Workflow Templates card not found')
+  fireEvent.click(within(card as HTMLElement).getByRole('button', { name: /open menu/i }))
+  fireEvent.click(screen.getByText('View Examples'))
 }
 
 describe('Workflow Template Cards Display', () => {
@@ -82,92 +95,94 @@ describe('Workflow Template Cards Display', () => {
     })
   })
 
-  test('should display Browse Templates button', async () => {
+  test('should display Templates button', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
     await waitFor(() => {
-      expect(screen.getByText('Browse Templates')).toBeInTheDocument()
+      expect(templatesOpenButton()).toBeInTheDocument()
     })
   })
 
-  test('should open modal when Browse Templates is clicked', async () => {
+  test('should open modal when Templates is clicked', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
     // Wait for component to load
     await waitFor(() => {
-      expect(screen.getByText('Browse Templates')).toBeInTheDocument()
+      expect(templatesOpenButton()).toBeInTheDocument()
     })
 
     // Initially, template cards should not be visible (modal closed)
     expect(screen.queryByText('Simple Code Review Workflow')).not.toBeInTheDocument()
 
-    // Click Browse Templates button
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     // Verify modal opens and template cards are displayed
     await waitFor(() => {
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()
       expect(screen.getByText('Bug Fix Pipeline')).toBeInTheDocument()
-      // Verify we can see the Use Template buttons (only visible in modal)
-      expect(screen.getAllByText('Use Template')).toHaveLength(2)
+      expect(screen.getAllByText('Data Processing Pipeline').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByText('User Onboarding Flow')).toBeInTheDocument()
+      expect(screen.getAllByText('Use Template')).toHaveLength(4)
     })
   })
 
   test('should display correct template descriptions in modal', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    // Click Browse Templates button to open modal
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     // Verify modal opens and template descriptions are displayed
     await waitFor(() => {
       expect(screen.getByText('Basic code review with approval process')).toBeInTheDocument()
       expect(screen.getByText('Streamlined workflow for bug identification and resolution')).toBeInTheDocument()
-      // Verify Use Template buttons are present (modal-specific)
-      expect(screen.getAllByText('Use Template')).toHaveLength(2)
+      expect(
+        screen.getByText('Process incoming data through multiple AI agents for analysis and reporting')
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'Complete user onboarding automation with email verification and profile setup'
+        )
+      ).toBeInTheDocument()
+      expect(screen.getAllByText('Use Template')).toHaveLength(4)
     })
   })
 
   test('should display template category badges in modal', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
-      const categoryBadges = screen.getAllByText('Development')
-      expect(categoryBadges).toHaveLength(2) // Both templates are Development category
-      // Verify Use Template buttons are present (modal-specific)
-      expect(screen.getAllByText('Use Template')).toHaveLength(2)
+      expect(screen.getAllByText('Development')).toHaveLength(2)
+      expect(screen.getAllByText('Analytics')).toHaveLength(1)
+      expect(screen.getAllByText('Automation')).toHaveLength(1)
+      expect(screen.getAllByText('Use Template')).toHaveLength(4)
     })
   })
 
   test('should display Use Template buttons for each template in modal', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
       const useTemplateButtons = screen.getAllByText('Use Template')
-      expect(useTemplateButtons).toHaveLength(2) // One for each template
-      // Verify template names are visible 
+      expect(useTemplateButtons).toHaveLength(4)
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()
       expect(screen.getByText('Bug Fix Pipeline')).toBeInTheDocument()
+      expect(screen.getAllByText('Data Processing Pipeline').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByText('User Onboarding Flow')).toBeInTheDocument()
     })
   })
 
   test('should create workflow and close modal when Use Template button is clicked', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()
-      expect(screen.getAllByText('Use Template')).toHaveLength(2)
+      expect(screen.getAllByText('Use Template')).toHaveLength(4)
     })
 
     // Click Use Template button for first template
@@ -176,12 +191,17 @@ describe('Workflow Template Cards Display', () => {
 
     // Verify API was called to create workflow and modal closed
     await waitFor(() => {
-      expect(mockApiClient.createWorkflow).toHaveBeenCalledWith({
-        title: 'Code Review Workflow',
-        description: 'Automated code review and approval process',
-        status: 'draft',
-        priority: 'medium'
-      })
+      expect(mockApiClient.createWorkflow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Code Review Workflow',
+          description: 'Automated code review and approval process',
+          status: 'draft',
+          priority: 'medium',
+          projectId: 'main-1773934155652',
+          nodes: expect.any(Array),
+          edges: expect.any(Array),
+        })
+      )
       // Modal should be closed - template names should not be visible anymore
       expect(screen.queryByText('Simple Code Review Workflow')).not.toBeInTheDocument()
     })
@@ -190,18 +210,18 @@ describe('Workflow Template Cards Display', () => {
   test('should close templates modal when View Examples is clicked', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    // First show templates modal
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    await waitFor(() => {
+      expect(templatesOpenButton()).toBeInTheDocument()
+    })
+
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()
-      expect(screen.getAllByText('Use Template')).toHaveLength(2)
+      expect(screen.getAllByText('Use Template')).toHaveLength(4)
     })
 
-    // Click View Examples button (this should close the modal)
-    const examplesButton = screen.getByText('View Examples')
-    fireEvent.click(examplesButton)
+    openViewExamplesFromTemplatesCard()
 
     // Templates modal should be closed, examples section should be shown
     await waitFor(() => {
@@ -215,30 +235,28 @@ describe('Workflow Template Cards Display', () => {
   test('should display template cards with hover effects in modal', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()
       expect(screen.getByText('Bug Fix Pipeline')).toBeInTheDocument()
-      expect(screen.getAllByText('Use Template')).toHaveLength(2)
+      expect(screen.getAllByText('Use Template')).toHaveLength(4)
     })
   })
 
   test('should disable Use Template buttons when workflow is being created', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()
-      expect(screen.getAllByText('Use Template')).toHaveLength(2) // Modal-specific buttons
+      expect(screen.getAllByText('Use Template')).toHaveLength(4) // Modal-specific buttons
     })
 
     // Click Use Template button
     const useTemplateButtons = screen.getAllByText('Use Template')
-    expect(useTemplateButtons.length).toBe(2)
+    expect(useTemplateButtons.length).toBe(4)
     
     fireEvent.click(useTemplateButtons[0])
 
@@ -256,19 +274,18 @@ describe('Workflow Template Cards Display', () => {
     expect(screen.queryByText('Simple Code Review Workflow')).not.toBeInTheDocument()
 
     // Show modal
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
-      expect(screen.getAllByText('Use Template')).toHaveLength(2) // Modal-specific buttons
+      expect(screen.getAllByText('Use Template')).toHaveLength(4) // Modal-specific buttons
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()
     })
 
-    // Click Browse Templates again - should still show modal
-    fireEvent.click(browseButton)
+    // Click Templates again - should still show modal
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
-      expect(screen.getAllByText('Use Template')).toHaveLength(2) // Modal-specific buttons
+      expect(screen.getAllByText('Use Template')).toHaveLength(4) // Modal-specific buttons
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()
     })
   })
@@ -276,12 +293,11 @@ describe('Workflow Template Cards Display', () => {
   test('should show modal with proper styling', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
       // Check that modal is shown with template cards and proper styling
-      expect(screen.getAllByText('Use Template')).toHaveLength(2) // Modal-specific buttons
+      expect(screen.getAllByText('Use Template')).toHaveLength(4) // Modal-specific buttons
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()
       expect(screen.getByText('Bug Fix Pipeline')).toBeInTheDocument()
     })
@@ -290,8 +306,7 @@ describe('Workflow Template Cards Display', () => {
   test('should render template cards in a grid layout in modal', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
       // Check that both template cards are rendered (indicating grid layout is working)
@@ -300,20 +315,19 @@ describe('Workflow Template Cards Display', () => {
       
       // Check that they both have Use Template buttons (indicating proper card structure)
       const useTemplateButtons = screen.getAllByText('Use Template')
-      expect(useTemplateButtons).toHaveLength(2)
+      expect(useTemplateButtons).toHaveLength(4)
     })
   })
 
   test('should show template cards with buttons in modal', async () => {
     render(<Workflows />, { wrapper: createTestWrapper() })
     
-    const browseButton = screen.getByText('Browse Templates')
-    fireEvent.click(browseButton)
+    fireEvent.click(templatesOpenButton())
 
     await waitFor(() => {
       // Check that template cards have Use Template buttons (modal-specific)
       const templateButtons = screen.getAllByText('Use Template')
-      expect(templateButtons.length).toBe(2)
+      expect(templateButtons.length).toBe(4)
       
       // Check that template cards have titles
       expect(screen.getByText('Simple Code Review Workflow')).toBeInTheDocument()

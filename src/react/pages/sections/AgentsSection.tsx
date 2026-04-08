@@ -2,33 +2,14 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { UserGroupIcon, CpuChipIcon, ClockIcon, CheckCircleIcon, PencilIcon, XMarkIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { apiClient } from '../../lib/api-client'
+import { useProject } from '../../store/project-store'
 import { StatusCard } from '../../components/ui/Cards/StatusCard'
 import { MetricCard } from '../../components/ui/Cards/MetricCard'
 import { ReasoningButton } from '../../components/ui/ReasoningButton'
-
-interface Agent {
-  id: string
-  name: string
-  description?: string
-  primaryRole: string
-  projectId?: string
-  capabilities: {
-    reasoning: number
-    creativity: number
-    technical: number
-    communication: number
-  }
-  status?: 'active' | 'inactive' | 'training' | 'deployed'
-  createdAt: string
-  updatedAt: string
-  stats?: {
-    tasksCompleted: number
-    successRate: number
-    avgResponseTime: number
-  }
-}
+import type { Agent } from '../../types'
 
 const AgentsSection: React.FC = () => {
+  const { currentProjectId } = useProject()
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -38,15 +19,15 @@ const AgentsSection: React.FC = () => {
   const queryClient = useQueryClient()
 
   const { data: agents = [], isLoading, error } = useQuery({
-    queryKey: ['agents'],
-    queryFn: () => apiClient.getAgents(),
+    queryKey: ['agents', currentProjectId],
+    queryFn: () => apiClient.getAgents(currentProjectId),
   })
 
   const updateAgentMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: Partial<Agent> }) => 
       apiClient.updateAgent(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['agents', currentProjectId] })
       setEditingAgent(null)
       setEditForm({})
     },
@@ -55,7 +36,7 @@ const AgentsSection: React.FC = () => {
   const deleteAgentMutation = useMutation({
     mutationFn: (id: string) => apiClient.deleteAgent(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['agents', currentProjectId] })
       setSelectedAgent(null)
     },
   })
@@ -99,13 +80,19 @@ const AgentsSection: React.FC = () => {
   }
 
   const updateCapability = (capability: string, value: number) => {
-    setEditForm(prev => ({
-      ...prev,
-      capabilities: {
-        ...prev.capabilities,
-        [capability]: Math.min(1, Math.max(0, value)) // Clamp between 0 and 1
+    setEditForm(prev => {
+      const c = prev.capabilities
+      return {
+        ...prev,
+        capabilities: {
+          reasoning: c?.reasoning ?? 0,
+          creativity: c?.creativity ?? 0,
+          technical: c?.technical ?? 0,
+          communication: c?.communication ?? 0,
+          [capability]: Math.min(1, Math.max(0, value)),
+        },
       }
-    }))
+    })
   }
 
   // Filter agents

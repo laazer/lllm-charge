@@ -141,7 +141,9 @@ function App() {
       }}
     >
       <ThemeProvider>
-        <WebSocketProvider wsUrl={`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:3001`}>
+        <WebSocketProvider
+          wsUrl={`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT ?? '3001'}`}
+        >
           <ProjectProvider>
             <AppContent />
           </ProjectProvider>

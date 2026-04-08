@@ -17,12 +17,15 @@
     "dev:react": "vite --host",
     "dev:server": "npx tsx src/server/working-server.mjs",
     "dev:server:comprehensive": "node src/server/comprehensive-working-server.mjs",
+    "dev:server:python": "cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:full:python": "concurrently \"npm run dev:server:python\" \"npm run dev:react\"",
+    "test:backend:python": "cd backend && if [ -x .venv/bin/python ]; then .venv/bin/python -m pytest tests/ -q; else python3 -m pytest tests/ -q; fi",
     "dev:full": "concurrently \"npm run dev:server:comprehensive\" \"npm run dev:react\"",
     "dev:full:basic": "concurrently \"npm run dev:server\" \"npm run dev:react\"",
     "start": "node dist/index.js",
     "start:react": "vite preview",
     "preview:production": "npm run build:production && vite preview",
-    "copy-assets": "/bin/cp -rf src/assets/* dist/assets/ 2>/dev/null || true && mkdir -p dist/src/server && /bin/cp -f src/server/*.mjs dist/src/server/ 2>/dev/null || true",
+    "copy-assets": "/bin/cp -rf src/assets/* dist/assets/ 2>/dev/null || true && mkdir -p dist/src/server dist/src/setup && /bin/cp -f src/server/*.mjs dist/src/server/ 2>/dev/null || true && /bin/cp -f src/setup/default-agents-skills.json dist/src/setup/ 2>/dev/null || true",
     "setup": "npx tsx src/setup/load-defaults.ts",
     "setup:force": "npx tsx -e \"import { loadDefaultsFromCLI } from './src/setup/load-defaults'; loadDefaultsFromCLI('http://localhost:3001', 'main-1773934155652', { overwriteExisting: true })\"",
     "download:samples": "bash scripts/download-sample-projects.sh",
@@ -44,7 +47,8 @@
     "test:ci": "jest --ci --coverage --watchAll=false",
     "test:all": "npm run test && npm run test:react",
     "lint": "eslint src tests --fix",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.build.json",
+    "typecheck:tests": "tsc --noEmit",
     "clean": "rm -rf dist build .llm-charge-cache coverage",
     "local": "bash scripts/local-deploy.sh start",
     "local:build": "bash scripts/local-deploy.sh start --build",
@@ -117,6 +121,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/figlet": "^1.5.8",
     "@types/jest": "^29.5.12",
+    "@types/js-yaml": "^4.0.9",
     "@types/jsdom": "^28.0.1",
     "@types/node": "^22.19.15",
     "@types/node-fetch": "^2.6.13",
@@ -145,7 +150,7 @@
     "sqlite-vss": "^0.1.2"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": "^20.19.0 || >=22.12.0",
     "python": ">=3.11"
   }
 }

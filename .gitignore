@@ -17,6 +17,13 @@
 .env
 *.env
 .env.*
+!.env.example
+!.env*.example
+!**/.env.example
+!**/.env*.example
+
+### direnv ###
+.direnv/
 
 # Local configuration that shouldn't be shared
 *.local
@@ -123,6 +130,8 @@ out/
 .svelte-kit
 
 ### Python ###
+backend/venv/
+backend/.venv/
 __pycache__/
 *.py[cod]
 *.pyo
@@ -145,6 +154,7 @@ snapshots/
 
 ### Runtime Data ###
 data/
+backend/data/
 
 ### Local Deploy ###
 .local-deploy/

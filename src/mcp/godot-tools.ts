@@ -63,13 +63,64 @@ export class GodotMCPTools {
   private projectPath: string
 
   constructor(projectPath: string = process.cwd()) {
-    this.projectPath = projectPath
+    this.projectPath = path.resolve(projectPath)
+  }
+
+  /** Ensure directory contains project.godot (for explicit API project roots). */
+  static async assertValidGodotProjectRoot(projectRoot: string): Promise<void> {
+    const root = path.resolve(projectRoot)
+    try {
+      await fs.access(path.join(root, 'project.godot'))
+    } catch {
+      throw new Error('No project.godot found - not a valid Godot project')
+    }
+  }
+
+  private normalizeGodotPath(p: string): string {
+    let s = p.trim().replace(/\\/g, '/')
+    // Godot resource prefix: res://path or res:/path (normalize to project-relative path)
+    s = s.replace(/^res:\/+/, '')
+    return s.replace(/^\.\/+/, '')
+  }
+
+  private resolveUnderProject(relativeOrAbsolute: string): string {
+    const norm = this.normalizeGodotPath(relativeOrAbsolute)
+    if (path.isAbsolute(norm)) {
+      return norm
+    }
+    return path.resolve(this.projectPath, norm)
+  }
+
+  private async readMainSceneRelativePath(): Promise<string> {
+    const projectFile = path.join(this.projectPath, 'project.godot')
+    let content: string
+    try {
+      content = await fs.readFile(projectFile, 'utf-8')
+    } catch {
+      throw new Error('No project.godot found - not a valid Godot project')
+    }
+    const m =
+      content.match(/run\/main_scene="res:\/\/([^"]+)"/) ||
+      content.match(/run\/main_scene='res:\/\/([^']+)'/)
+    if (!m) {
+      throw new Error('No run/main_scene in project.godot; provide scenePath')
+    }
+    return this.normalizeGodotPath(`res://${m[1]}`)
   }
 
   // Analyze a Godot scene file for performance and structure
-  async analyzeScene(scenePath: string, analyzePerformance: boolean = true): Promise<GodotAnalysisResult> {
+  async analyzeScene(
+    scenePath: string | undefined | null,
+    analyzePerformance: boolean = true
+  ): Promise<GodotAnalysisResult> {
     try {
-      const fullPath = path.resolve(this.projectPath, scenePath)
+      let effective: string
+      if (scenePath === undefined || scenePath === null || String(scenePath).trim() === '') {
+        effective = await this.readMainSceneRelativePath()
+      } else {
+        effective = this.normalizeGodotPath(String(scenePath))
+      }
+      const fullPath = this.resolveUnderProject(effective)
       const sceneContent = await fs.readFile(fullPath, 'utf-8')
       
       // Parse .tscn file (simplified analysis)
@@ -96,7 +147,7 @@ export class GodotMCPTools {
       const memoryUsage = Math.round(5 + (nodeCount * 0.02) + (complexityScore * 0.1))
       
       return {
-        scenePath,
+        scenePath: effective,
         nodeCount,
         performance,
         recommendations,
@@ -105,14 +156,19 @@ export class GodotMCPTools {
         complexityScore
       }
     } catch (error) {
-      throw new Error(`Failed to analyze scene ${scenePath}: ${error}`)
+      const label = scenePath && String(scenePath).trim() !== '' ? scenePath : '(main scene)'
+      throw new Error(`Failed to analyze scene ${label}: ${error}`)
     }
   }
 
   // Optimize GDScript code for better performance
   async optimizeGDScript(scriptPath: string, optimizationLevel: 'basic' | 'advanced' = 'basic'): Promise<GDScriptOptimization> {
     try {
-      const fullPath = path.resolve(this.projectPath, scriptPath)
+      if (!scriptPath || String(scriptPath).trim() === '') {
+        throw new Error('scriptPath is required')
+      }
+      const effective = this.normalizeGodotPath(String(scriptPath))
+      const fullPath = this.resolveUnderProject(effective)
       const scriptContent = await fs.readFile(fullPath, 'utf-8')
       const lines = scriptContent.split('\n')
       
@@ -182,14 +238,15 @@ export class GodotMCPTools {
       const performanceGain = linesOptimized > 0 ? `+${Math.min(5 + linesOptimized * 2, 25)}%` : '+0%'
       
       return {
-        scriptPath,
+        scriptPath: effective,
         issues: issues.length > 0 ? issues : ['No major performance issues found'],
         performanceGain,
         linesOptimized,
         suggestions
       }
     } catch (error) {
-      throw new Error(`Failed to optimize script ${scriptPath}: ${error}`)
+      const label = scriptPath && String(scriptPath).trim() !== '' ? scriptPath : '(unknown)'
+      throw new Error(`Failed to optimize script ${label}: ${error}`)
     }
   }
 
@@ -504,25 +561,35 @@ func has_item(item_id: String) -> bool:
   }
 }
 
-// Register Godot MCP tools
-export function registerGodotTools(server: Server, projectPath: string) {
-  const godotTools = new GodotMCPTools(projectPath)
+function resolveToolProjectPath(
+  args: Record<string, unknown> | undefined,
+  defaultProjectPath: string
+): string {
+  const raw = args?.projectPath
+  if (raw != null && String(raw).trim() !== '') {
+    return path.resolve(String(raw))
+  }
+  return path.resolve(defaultProjectPath)
+}
 
-  // Register scene analyzer tool
+// Register Godot MCP tools
+export function registerGodotTools(server: Server, defaultProjectPath: string) {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params
+    const argObj = (args || {}) as Record<string, unknown>
 
     try {
       switch (name) {
-        case 'godot_scene_analyzer':
+        case 'godot_scene_analyzer': {
+          const godotTools = new GodotMCPTools(resolveToolProjectPath(argObj, defaultProjectPath))
           return {
             content: [
               {
                 type: 'text',
                 text: JSON.stringify(
                   await godotTools.analyzeScene(
-                    args?.scenePath as string || 'Main.tscn',
-                    args?.analyzePerformance as boolean ?? true
+                    argObj.scenePath as string | undefined,
+                    (argObj.analyzePerformance as boolean | undefined) ?? true
                   ),
                   null,
                   2
@@ -530,16 +597,18 @@ export function registerGodotTools(server: Server, projectPath: string) {
               }
             ]
           }
+        }
 
-        case 'gdscript_optimizer':
+        case 'gdscript_optimizer': {
+          const godotTools = new GodotMCPTools(resolveToolProjectPath(argObj, defaultProjectPath))
           return {
             content: [
               {
                 type: 'text',
                 text: JSON.stringify(
                   await godotTools.optimizeGDScript(
-                    args?.scriptPath as string || 'Player.gd',
-                    args?.optimizationLevel as 'basic' | 'advanced' || 'basic'
+                    (argObj.scriptPath as string) || '',
+                    (argObj.optimizationLevel as 'basic' | 'advanced') || 'basic'
                   ),
                   null,
                   2
@@ -547,16 +616,18 @@ export function registerGodotTools(server: Server, projectPath: string) {
               }
             ]
           }
+        }
 
-        case 'component_generator':
+        case 'component_generator': {
+          const godotTools = new GodotMCPTools(resolveToolProjectPath(argObj, defaultProjectPath))
           return {
             content: [
               {
                 type: 'text',
                 text: JSON.stringify(
                   await godotTools.generateComponent(
-                    args?.componentType as string || 'player_controller',
-                    args?.features as string[] || []
+                    (argObj.componentType as string) || 'player_controller',
+                    (argObj.features as string[]) || []
                   ),
                   null,
                   2
@@ -564,20 +635,19 @@ export function registerGodotTools(server: Server, projectPath: string) {
               }
             ]
           }
+        }
 
-        case 'godot_project_analyzer':
+        case 'godot_project_analyzer': {
+          const godotTools = new GodotMCPTools(resolveToolProjectPath(argObj, defaultProjectPath))
           return {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(
-                  await godotTools.analyzeProject(),
-                  null,
-                  2
-                )
+                text: JSON.stringify(await godotTools.analyzeProject(), null, 2)
               }
             ]
           }
+        }
 
         default:
           throw new Error(`Unknown Godot tool: ${name}`)
@@ -595,7 +665,7 @@ export function registerGodotTools(server: Server, projectPath: string) {
     }
   })
 
-  return godotTools
+  return new GodotMCPTools(path.resolve(defaultProjectPath))
 }
 
 // Tool definitions for MCP protocol
@@ -606,9 +676,14 @@ export const godotMCPToolDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
+        projectPath: {
+          type: 'string',
+          description: 'Path to the Godot project directory (containing project.godot); used to resolve relative scenePath'
+        },
         scenePath: {
           type: 'string',
-          description: 'Path to the .tscn scene file to analyze'
+          description:
+            'Path to the .tscn scene file (relative to project or absolute). Supports res:// paths. Omit to analyze run/main_scene from project.godot.'
         },
         analyzePerformance: {
           type: 'boolean',
@@ -616,7 +691,7 @@ export const godotMCPToolDefinitions = [
           default: true
         }
       },
-      required: ['scenePath']
+      required: []
     }
   },
   {
@@ -625,9 +700,13 @@ export const godotMCPToolDefinitions = [
     inputSchema: {
       type: 'object',
       properties: {
+        projectPath: {
+          type: 'string',
+          description: 'Path to the Godot project directory (containing project.godot); used to resolve relative scriptPath'
+        },
         scriptPath: {
           type: 'string',
-          description: 'Path to the .gd script file to optimize'
+          description: 'Path to the .gd script file to optimize (relative to project or absolute). Supports res:// paths.'
         },
         optimizationLevel: {
           type: 'string',
@@ -664,7 +743,12 @@ export const godotMCPToolDefinitions = [
     description: 'Analyze entire Godot project structure and provide overview',
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        projectPath: {
+          type: 'string',
+          description: 'Path to the Godot project directory (containing project.godot file)'
+        }
+      },
       required: []
     }
   }

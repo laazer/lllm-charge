@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import { WebSocketProvider } from '../../src/react/store/websocket-store'
 import { ThemeProvider } from '../../src/react/store/theme-store'
+import { ProjectProvider } from '../../src/react/store/project-store'
 import Dashboard from '../../src/react/pages/Dashboard'
 import SpecsSection from '../../src/react/pages/sections/SpecsSection'
 import AgentsSection from '../../src/react/pages/sections/AgentsSection'
@@ -131,9 +132,11 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <WebSocketProvider>
-            {children}
-          </WebSocketProvider>
+          <ProjectProvider>
+            <WebSocketProvider>
+              {children}
+            </WebSocketProvider>
+          </ProjectProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </BrowserRouter>
