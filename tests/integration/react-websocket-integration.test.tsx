@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import Dashboard from '../../src/react/pages/Dashboard'
 import { WebSocketProvider } from '../../src/react/store/websocket-store'
+import { ProjectProvider } from '../../src/react/store/project-store'
 import { apiClient } from '../../src/react/lib/api-client'
 
 // Mock the API client for predictable test data
@@ -264,9 +265,11 @@ describe('React WebSocket Integration', () => {
         return (
           <QueryClientProvider client={queryClient}>
             <BrowserRouter>
-              <WebSocketProvider wsUrl={`ws://localhost:${serverPort}`}>
-                {children}
-              </WebSocketProvider>
+              <ProjectProvider>
+                <WebSocketProvider wsUrl={`ws://localhost:${serverPort}`}>
+                  {children}
+                </WebSocketProvider>
+              </ProjectProvider>
             </BrowserRouter>
           </QueryClientProvider>
         )

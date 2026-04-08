@@ -7,6 +7,7 @@ import { IndependentDatabaseManager } from './independent-database-manager.mjs'
 import RealCodeGraphService from './real-codegraph-service.mjs'
 import LocalLLMManager from './local-llm-manager.mjs'
 import HybridRoutingManager from './hybrid-routing-manager.mjs'
+import { autoLoadDefaults } from './auto-load-defaults.mjs'
 // import { DevDocsMCPExtension } from '../setup/devdocs-mcp-extension.ts'
 // import { UniversalLanguageMCPExtension } from '../setup/universal-language-mcp-extension.ts'
 
@@ -53,8 +54,7 @@ class WorkingLLMChargeServer {
     this.wss = new WebSocketServer({ server: this.server })
     this.setupWebSocket()
     
-    // Initialize database and load real data
-    this.initializeDatabase()
+    this.dbInitPromise = this.initializeDatabase()
     
     // Initialize documentation extensions
     // this.initializeDocumentationSupport()
@@ -1786,8 +1786,9 @@ class WorkingLLMChargeServer {
   }
 
   async start() {
+    await this.dbInitPromise
     return new Promise((resolve) => {
-      this.server.listen(this.port, () => {
+      this.server.listen(this.port, async () => {
         console.log('🚀 LLM-Charge Working Server')
         console.log(`🌐 Server started at http://localhost:${this.port}`)
         console.log(`🔌 WebSocket available at ws://localhost:${this.port}`)
@@ -1803,12 +1804,16 @@ class WorkingLLMChargeServer {
         console.log('')
         console.log('🔄 Real-time updates via WebSocket')
         console.log('Press Ctrl+C to stop')
-        
+
+        if (this.dbReady) {
+          await autoLoadDefaults(this.databaseManager)
+        }
+
         // Start metrics broadcasting
         setInterval(() => {
           this.sendMetricsUpdate()
         }, 5000)
-        
+
         resolve()
       })
     })

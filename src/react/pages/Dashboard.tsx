@@ -1,6 +1,7 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useWebSocket } from '../store/websocket-store'
+import { useProject } from '../store/project-store'
 import { apiClient } from '../lib/api-client'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { StatusCard } from '../components/ui/Cards/StatusCard'
@@ -18,9 +19,10 @@ import {
 } from '@heroicons/react/24/outline'
 
 function ActiveSpecsList() {
+  const { currentProjectId } = useProject()
   const { data: specs = [], isLoading } = useQuery({
-    queryKey: ['specs', 'main-1773934155652'],
-    queryFn: () => apiClient.getSpecs('main-1773934155652'),
+    queryKey: ['specs', currentProjectId],
+    queryFn: () => apiClient.getSpecs(currentProjectId),
     refetchInterval: 30000, // Refresh every 30 seconds
   })
 
@@ -91,20 +93,21 @@ function ActiveSpecsList() {
 
 const Dashboard: React.FC = () => {
   const { metrics, isConnected } = useWebSocket()
-  
+  const { currentProjectId } = useProject()
+
   const { data: projects, isLoading: projectsLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: () => apiClient.getProjects(),
   })
 
   const { data: agents, isLoading: agentsLoading } = useQuery({
-    queryKey: ['agents'],
-    queryFn: () => apiClient.getAgents(),
+    queryKey: ['agents', currentProjectId],
+    queryFn: () => apiClient.getAgents(currentProjectId),
   })
 
   const { data: specs, isLoading: specsLoading } = useQuery({
-    queryKey: ['specs'],
-    queryFn: () => apiClient.getSpecs(),
+    queryKey: ['specs', currentProjectId],
+    queryFn: () => apiClient.getSpecs(currentProjectId),
   })
 
   if (projectsLoading || agentsLoading || specsLoading) {

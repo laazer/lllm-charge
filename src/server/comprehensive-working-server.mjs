@@ -7,11 +7,19 @@ import LocalLLMManager from './local-llm-manager.mjs'
 import { loadServerConfig } from './config-schema.mjs'
 import http from 'http'
 import path from 'path'
-import { promises as fs, readFileSync, existsSync, statSync, readdirSync, accessSync, constants as fsConstants } from 'fs'
+import {
+  promises as fs,
+  existsSync,
+  statSync,
+  readdirSync,
+  accessSync,
+  constants as fsConstants
+} from 'fs'
 import { fileURLToPath } from 'url'
 import { execSync } from 'child_process'
 import os from 'os'
 import { WebSocket, WebSocketServer } from 'ws'
+import { autoLoadDefaults } from './auto-load-defaults.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -2192,9 +2200,14 @@ Provide:
         inputSchema: {
           type: 'object',
           properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Path to the Godot project directory (containing project.godot); used to resolve relative scenePath'
+            },
             scenePath: {
               type: 'string',
-              description: 'Path to the .tscn scene file to analyze'
+              description:
+                'Path to the .tscn file (relative to project or absolute). Supports res://. Omit to analyze run/main_scene from project.godot.'
             },
             analyzePerformance: {
               type: 'boolean',
@@ -2202,23 +2215,28 @@ Provide:
               default: true
             }
           },
-          required: ['scenePath']
+          required: []
         },
         handler: async (args) => {
           try {
             const { GodotMCPTools } = await import('../../dist/src/mcp/godot-tools.js')
-            const godotTools = new GodotMCPTools()
-            const result = await godotTools.analyzeScene(args.scenePath, args.analyzePerformance)
-            return { 
-              success: true, 
+            const root = path.resolve(args.projectPath || process.cwd())
+            if (args.projectPath) {
+              await GodotMCPTools.assertValidGodotProjectRoot(root)
+            }
+            const godotTools = new GodotMCPTools(root)
+            const analyzePerformance = args.analyzePerformance !== undefined ? args.analyzePerformance : true
+            const result = await godotTools.analyzeScene(args.scenePath, analyzePerformance)
+            return {
+              success: true,
               data: result,
-              message: `Analyzed scene: ${args.scenePath}. Found ${result.nodeCount} nodes with ${result.performance} performance.`
+              message: `Analyzed scene: ${result.scenePath}. Found ${result.nodeCount} nodes with ${result.performance} performance.`
             }
           } catch (error) {
-            return { 
-              success: false, 
+            return {
+              success: false,
               error: `Failed to analyze scene: ${error.message}`,
-              details: error.stack 
+              details: error.stack
             }
           }
         }
@@ -2230,9 +2248,13 @@ Provide:
         inputSchema: {
           type: 'object',
           properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Path to the Godot project directory (containing project.godot); used to resolve relative scriptPath'
+            },
             scriptPath: {
               type: 'string',
-              description: 'Path to the .gd script file to optimize'
+              description: 'Path to the .gd script file to optimize (relative to project or absolute). Supports res:// paths.'
             },
             optimizationLevel: {
               type: 'string',
@@ -2246,18 +2268,22 @@ Provide:
         handler: async (args) => {
           try {
             const { GodotMCPTools } = await import('../../dist/src/mcp/godot-tools.js')
-            const godotTools = new GodotMCPTools()
-            const result = await godotTools.optimizeGDScript(args.scriptPath, args.optimizationLevel)
-            return { 
-              success: true, 
+            const root = path.resolve(args.projectPath || process.cwd())
+            if (args.projectPath) {
+              await GodotMCPTools.assertValidGodotProjectRoot(root)
+            }
+            const godotTools = new GodotMCPTools(root)
+            const result = await godotTools.optimizeGDScript(args.scriptPath, args.optimizationLevel || 'basic')
+            return {
+              success: true,
               data: result,
-              message: `Optimized ${args.scriptPath}. Found ${result.issues.length} issues with ${result.performanceGain} improvement potential.`
+              message: `Optimized ${result.scriptPath}. Found ${result.issues.length} issues with ${result.performanceGain} improvement potential.`
             }
           } catch (error) {
-            return { 
-              success: false, 
+            return {
+              success: false,
               error: `Failed to optimize script: ${error.message}`,
-              details: error.stack 
+              details: error.stack
             }
           }
         }
@@ -2318,7 +2344,10 @@ Provide:
         handler: async (args) => {
           try {
             const { GodotMCPTools } = await import('../../dist/src/mcp/godot-tools.js')
-            const projectPath = args.projectPath || process.cwd()
+            const projectPath = path.resolve(args.projectPath || process.cwd())
+            if (args.projectPath) {
+              await GodotMCPTools.assertValidGodotProjectRoot(projectPath)
+            }
             const godotTools = new GodotMCPTools(projectPath)
             const result = await godotTools.analyzeProject()
             return { 
@@ -3142,7 +3171,7 @@ Please use the project context provided in the system prompt to give a relevant,
       this.wss = new WebSocketServer({ server: this.server })
       this.setupWebSocket()
       
-      this.server.listen(this.port, () => {
+      this.server.listen(this.port, async () => {
         console.log(`🚀 Comprehensive Working Server with Full MCP Integration`)
         console.log(`🌐 Server started at http://localhost:${this.port}`)
         console.log(`🔌 WebSocket available at ws://localhost:${this.port}`)
@@ -3174,7 +3203,7 @@ Please use the project context provided in the system prompt to give a relevant,
         console.log('   • get_system_status - Comprehensive system health')
         
         this.startMetricsStream()
-        this.autoLoadDefaults()
+        await autoLoadDefaults(this.dbManager)
       })
 
     } catch (error) {
@@ -3200,88 +3229,6 @@ Please use the project context provided in the system prompt to give a relevant,
     try { await this.dbManager.close() } catch {}
 
     console.log('✅ Shutdown complete')
-  }
-
-  async autoLoadDefaults() {
-    try {
-      const defaultsPath = path.join(process.cwd(), 'src', 'setup', 'default-agents-skills.json')
-      const defaults = JSON.parse(readFileSync(defaultsPath, 'utf-8'))
-
-      const agents = await this.dbManager.getAllAgents()
-      const specs = await this.dbManager.getAllSpecs()
-
-      // Check what's missing
-      const existingAgentNames = new Set(agents.map(a => a.name))
-      const existingSpecTitles = new Set(specs.map(s => s.title))
-
-      const missingAgents = (defaults.agents || []).filter(a => !existingAgentNames.has(a.name))
-      const missingSkills = (defaults.skills || []).filter(s => !existingSpecTitles.has(`${s.name} Skill Documentation`))
-      const missingSpecs = (defaults.specs || []).filter(s => !existingSpecTitles.has(s.title))
-
-      if (missingAgents.length === 0 && missingSkills.length === 0 && missingSpecs.length === 0) {
-        console.log(`✅ All defaults loaded (${agents.length} agents, ${specs.length} specs)`)
-        return
-      }
-
-      console.log(`📦 Loading missing defaults: ${missingAgents.length} agents, ${missingSkills.length} skills, ${missingSpecs.length} specs`)
-
-      // Load agents
-      let agentsLoaded = 0
-      for (const agent of defaults.agents || []) {
-        const exists = agents.some(a => a.name === agent.name)
-        if (!exists) {
-          await this.dbManager.createAgent({
-            id: `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name: agent.name,
-            description: agent.description,
-            primaryRole: agent.primaryRole,
-            capabilities: agent.capabilities,
-            data: { skills: agent.skills, tags: agent.tags },
-          })
-          agentsLoaded++
-        }
-      }
-
-      // Load skills as specs
-      let skillsLoaded = 0
-      for (const skill of defaults.skills || []) {
-        const title = `${skill.name} Skill Documentation`
-        const exists = specs.some(s => s.title === title)
-        if (!exists) {
-          const description = `# ${skill.name}\n\n${skill.description}\n\n## Capabilities\n${skill.capabilities.map(c => `- ${c}`).join('\n')}\n\n## Cost Savings: ${skill.costSavings}`
-          await this.dbManager.createSpec({
-            id: `spec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            title,
-            description,
-            status: 'active',
-            priority: 'high',
-            data: { tags: ['skill', 'capability', ...(skill.tags || [])], category: skill.category },
-          })
-          skillsLoaded++
-        }
-      }
-
-      // Load specs
-      let specsLoaded = 0
-      for (const spec of defaults.specs || []) {
-        const exists = specs.some(s => s.title === spec.title)
-        if (!exists) {
-          await this.dbManager.createSpec({
-            id: `spec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            title: spec.title,
-            description: spec.description,
-            status: spec.status || 'active',
-            priority: spec.priority || 'medium',
-            data: { tags: spec.tags || [] },
-          })
-          specsLoaded++
-        }
-      }
-
-      console.log(`✅ Auto-loaded: ${agentsLoaded} agents, ${skillsLoaded} skills, ${specsLoaded} specs`)
-    } catch (error) {
-      console.warn('⚠️ Auto-load defaults failed (non-fatal):', error.message)
-    }
   }
 
   setupWebSocket() {
@@ -5710,7 +5657,8 @@ Please use the project context provided in the system prompt to give a relevant,
 
 // Start the comprehensive server
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const server = new ComprehensiveWorkingServer(3001)
+  const listenPort = Number.parseInt(process.env.PORT || '3001', 10)
+  const server = new ComprehensiveWorkingServer(Number.isFinite(listenPort) ? listenPort : 3001)
   server.start().catch(console.error)
 
   // Graceful shutdown on signals

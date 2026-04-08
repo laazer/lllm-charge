@@ -32,14 +32,29 @@ export interface Agent {
     technical: number
     communication: number
   }
+  status?: 'active' | 'inactive' | 'training' | 'deployed'
+  stats?: {
+    tasksCompleted: number
+    successRate: number
+    avgResponseTime: number
+  }
+}
+
+/** Code/test link row used in spec manager UI and API payloads */
+export interface SpecLinkedRef {
+  id: string
+  name: string
+  kind: string
+  file: string
+  line: number
 }
 
 export interface Spec {
   id: string
   title: string
-  description: string
+  description?: string
   type?: 'feature' | 'spec' | 'task'
-  status: 'active' | 'pending' | 'completed' | 'cancelled' | 'draft'
+  status: 'active' | 'pending' | 'completed' | 'cancelled' | 'draft' | 'archived'
   priority: 'low' | 'medium' | 'high' | 'critical'
   parentId?: string | null
   projectId: string
@@ -49,7 +64,8 @@ export interface Spec {
   assignedAgent?: string
   linkedClasses?: string[]
   linkedMethods?: string[]
-  linkedTests?: string[]
+  linkedSymbols?: SpecLinkedRef[]
+  linkedTests?: string[] | SpecLinkedRef[]
   comments?: any[]
 }
 

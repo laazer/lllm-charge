@@ -17,6 +17,7 @@ import {
   BeakerIcon
 } from '@heroicons/react/24/outline'
 import { apiClient } from '../lib/api-client'
+import { useProject } from '../store/project-store'
 import { StatusCard } from '../components/ui/Cards/StatusCard'
 import { Modal, ModalBody } from '../components/ui/Modals/Modal'
 import { OverflowMenu } from '../components/ui/Menus/OverflowMenu'
@@ -25,14 +26,15 @@ import { Workflow } from '../types'
 const Workflows: React.FC = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { currentProjectId } = useProject()
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showExamples, setShowExamples] = useState(false)
   // isDragOver state removed - no drag and drop functionality
 
   const { data: workflowsRaw = [], isLoading, error } = useQuery({
-    queryKey: ['workflows'],
-    queryFn: () => apiClient.getWorkflows(),
+    queryKey: ['workflows', currentProjectId],
+    queryFn: () => apiClient.getWorkflows(currentProjectId),
   })
 
   // Filter out workflows with null IDs and normalize data structure
@@ -47,7 +49,7 @@ const Workflows: React.FC = () => {
   const createWorkflowMutation = useMutation({
     mutationFn: (workflowData: any) => apiClient.createWorkflow(workflowData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflows'] })
+      queryClient.invalidateQueries({ queryKey: ['workflows', currentProjectId] })
       setIsCreatingWorkflow(false)
     },
   })
@@ -55,7 +57,7 @@ const Workflows: React.FC = () => {
   const deleteWorkflowMutation = useMutation({
     mutationFn: (workflowId: string) => apiClient.deleteWorkflow(workflowId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflows'] })
+      queryClient.invalidateQueries({ queryKey: ['workflows', currentProjectId] })
     },
   })
 
@@ -64,7 +66,8 @@ const Workflows: React.FC = () => {
       title: `Workflow ${Date.now()}`,
       description: 'A new n8n-style automation workflow',
       status: 'draft',
-      priority: 'medium'
+      priority: 'medium',
+      projectId: currentProjectId,
     }
 
     setIsCreatingWorkflow(true)
@@ -349,7 +352,7 @@ const Workflows: React.FC = () => {
 
   const handleCreateFromTemplate = (template: any) => {
     setIsCreatingWorkflow(true)
-    createWorkflowMutation.mutate(template.template)
+    createWorkflowMutation.mutate({ ...template.template, projectId: currentProjectId })
     setShowTemplates(false) // Close modal after creating workflow
   }
 
@@ -568,10 +571,12 @@ const Workflows: React.FC = () => {
                             label: 'Duplicate',
                             icon: DocumentDuplicateIcon,
                             onClick: () => {
+                              const { id: _omitId, ...rest } = workflow as Workflow & { id?: string }
                               const duplicatedWorkflow = {
-                                ...workflow,
+                                ...rest,
                                 title: `${workflow.title} (Copy)`,
-                                status: 'draft' as const
+                                status: 'draft' as const,
+                                projectId: currentProjectId,
                               }
                               createWorkflowMutation.mutate(duplicatedWorkflow)
                             }

@@ -125,6 +125,12 @@ export default defineConfig({
       port: 3000,
     },
   },
+  preview: {
+    proxy: {
+      '/api': process.env.BACKEND_URL || 'http://localhost:3001',
+      '/mcp': process.env.BACKEND_URL || 'http://localhost:3001',
+    },
+  },
   define: {
     __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
   },

@@ -41,6 +41,50 @@ pid_alive() {
   [[ -f "$1" ]] && kill -0 "$(cat "$1")" 2>/dev/null
 }
 
+# True if something is listening on TCP port (macOS/Linux with lsof).
+tcp_port_listening() {
+  local p="$1"
+  command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+# Drop pidfiles whose processes have exited (avoids "already running" when only one side is alive).
+remove_stale_pidfile() {
+  local f="$1"
+  [[ -f "$f" ]] || return 0
+  if pid_alive "$f"; then
+    return 0
+  fi
+  rm -f "$f"
+}
+
+# After crashes or manual kills, backend may be gone while vite preview keeps running (or vice versa).
+# Normalize so we either have both running or a clean slate before start.
+reconcile_local_deploy_pids() {
+  remove_stale_pidfile "$BACKEND_PID"
+  remove_stale_pidfile "$REACT_PID"
+
+  local b_alive=false
+  local r_alive=false
+  pid_alive "$BACKEND_PID" && b_alive=true
+  pid_alive "$REACT_PID" && r_alive=true
+
+  if $b_alive && $r_alive; then
+    return 1
+  fi
+
+  if $b_alive && ! $r_alive; then
+    warn "Backend was running without this script's React preview — stopping backend for a clean start."
+    stop_process "$BACKEND_PID" "backend"
+  fi
+
+  if ! $b_alive && $r_alive; then
+    warn "React preview was still running after the backend exited — stopping orphaned preview."
+    stop_process "$REACT_PID" "react"
+  fi
+
+  return 0
+}
+
 require_root() {
   if [[ ! -f "$ROOT/package.json" ]]; then
     error "package.json not found. Run from the project root or via npm run."
@@ -52,10 +96,11 @@ require_root() {
 build() {
   info "Building TypeScript backend..."
   cd "$ROOT"
-  npm run build 2>&1 | tail -5
+  npm run build
 
   info "Building React frontend (production)..."
-  npm run build:react 2>&1 | tail -5
+  # Embed backend WS port; change BACKEND_PORT after build requires rebuild.
+  VITE_BACKEND_PORT="${BACKEND_PORT:-3001}" npm run build:react
 
   success "Build complete."
 }
@@ -68,9 +113,8 @@ start() {
 
   mkdir -p "$RUN_DIR"
 
-  # Check if already running
-  if pid_alive "$BACKEND_PID" || pid_alive "$REACT_PID"; then
-    warn "Instance already running. Use 'restart' or 'stop' first."
+  if ! reconcile_local_deploy_pids; then
+    warn "Instance already running. Use ${YELLOW}npm run local:restart${NC} or ${YELLOW}npm run local:stop${NC} first."
     status
     exit 1
   fi
@@ -85,22 +129,40 @@ start() {
 
   cd "$ROOT"
 
-  # Start backend
-  info "Starting backend on port $BACKEND_PORT..."
-  PORT="$BACKEND_PORT" node src/server/comprehensive-working-server.mjs \
-    >> "$BACKEND_LOG" 2>&1 &
-  echo $! > "$BACKEND_PID"
-
-  # Give it a moment to bind
-  sleep 1
-  if ! pid_alive "$BACKEND_PID"; then
-    error "Backend failed to start. Check logs: $BACKEND_LOG"
+  if tcp_port_listening "$BACKEND_PORT"; then
+    error "Port $BACKEND_PORT is already in use — another process is listening (common: npm run dev:server or an old node)."
+    info "Free the port:  ${CYAN}kill \$(lsof -ti :$BACKEND_PORT)${NC}"
+    info "Or use another:   ${CYAN}BACKEND_PORT=3002 npm run local${NC}"
     exit 1
   fi
 
-  # Start React preview
+  # Start backend
+  info "Starting backend on port $BACKEND_PORT..."
+  LLM_CHARGE_ROOT="$ROOT" PORT="$BACKEND_PORT" node src/server/comprehensive-working-server.mjs \
+    >> "$BACKEND_LOG" 2>&1 &
+  echo $! > "$BACKEND_PID"
+
+  # Brief grace: Node can exit quickly on error; give slow DB init a few seconds.
+  sleep 2
+  if ! pid_alive "$BACKEND_PID"; then
+    sleep 3
+  fi
+  if ! pid_alive "$BACKEND_PID"; then
+    error "Backend exited during startup. Recent log:"
+    echo -e "${YELLOW}────────────────────────────────${NC}"
+    tail -n 30 "$BACKEND_LOG" 2>/dev/null || true
+    echo -e "${YELLOW}────────────────────────────────${NC}"
+    info "Full log: $BACKEND_LOG"
+    if tcp_port_listening "$BACKEND_PORT"; then
+      info "Port $BACKEND_PORT is in use — ${CYAN}kill \$(lsof -ti :$BACKEND_PORT)${NC} or set ${CYAN}BACKEND_PORT${NC}."
+    fi
+    rm -f "$BACKEND_PID"
+    exit 1
+  fi
+
+  # Start React preview (/api proxy must match BACKEND_PORT)
   info "Starting React preview on port $REACT_PORT..."
-  npx vite preview --port "$REACT_PORT" --host \
+  BACKEND_URL="http://127.0.0.1:$BACKEND_PORT" npx vite preview --port "$REACT_PORT" --host \
     >> "$REACT_LOG" 2>&1 &
   echo $! > "$REACT_PID"
 
@@ -145,6 +207,8 @@ restart() {
 
 # ── Status ────────────────────────────────────────────────────────────────────
 status() {
+  remove_stale_pidfile "$BACKEND_PID"
+  remove_stale_pidfile "$REACT_PID"
   echo ""
   echo -e "${BLUE}LLM-Charge Local Deploy Status${NC}"
   echo "──────────────────────────────"

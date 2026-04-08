@@ -2,7 +2,9 @@ import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AgentsSection } from '../../../src/react/pages/sections/AgentsSection'
+import AgentsSection from '../../../src/react/pages/sections/AgentsSection'
+import { ProjectProvider } from '../../../src/react/store/project-store'
+import { ThemeProvider } from '../../../src/react/store/theme-store'
 
 // Mock the API client
 jest.mock('../../../src/react/lib/api-client', () => ({
@@ -34,7 +36,9 @@ const createWrapper = () => {
   
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <ThemeProvider>
+        <ProjectProvider>{children}</ProjectProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }
@@ -53,6 +57,7 @@ describe('AgentsSection - Agent Deletion', () => {
         communication: 0.8
       },
       status: 'active' as const,
+      projectId: 'main-1773934155652',
       createdAt: '2023-01-01T00:00:00Z',
       updatedAt: '2023-01-01T00:00:00Z'
     },
@@ -68,6 +73,7 @@ describe('AgentsSection - Agent Deletion', () => {
         communication: 0.9
       },
       status: 'active' as const,
+      projectId: 'main-1773934155652',
       createdAt: '2023-01-01T00:00:00Z',
       updatedAt: '2023-01-01T00:00:00Z'
     }

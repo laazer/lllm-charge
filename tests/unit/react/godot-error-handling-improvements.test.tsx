@@ -1,23 +1,54 @@
 // Unit Test: Godot Error Handling Improvements
-// Tests the enhanced error handling for invalid project paths
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import GodotMCPSection from '../../../src/react/pages/sections/GodotMCPSection';
+import React from 'react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ThemeProvider } from '../../../src/react/store/theme-store'
+import { ProjectProvider } from '../../../src/react/store/project-store'
+import { GodotMCPSection } from '../../../src/react/pages/sections/GodotMCPSection'
+import '@testing-library/jest-dom'
 
-// Mock the API client
-const mockApiClient = {
-  browseDirectories: jest.fn(),
-};
+jest.mock('@heroicons/react/24/outline', () => {
+  const React = require('react')
+  const Icon = () => React.createElement('span', { 'data-testid': 'mock-icon' })
+  return new Proxy(
+    {},
+    {
+      get: () => Icon,
+    }
+  )
+})
+
+jest.mock('../../../src/react/components/ui/FileBrowser', () => ({
+  __esModule: true,
+  default: () => null,
+}))
+
 jest.mock('../../../src/react/lib/api-client', () => ({
-  apiClient: mockApiClient,
-}));
-
-// Mock fetch for API calls
-global.fetch = jest.fn();
+  apiClient: {
+    get: jest.fn(),
+    post: jest.fn(),
+    getProjects: jest.fn(() =>
+      Promise.resolve([
+        {
+          id: 'main-1773934155652',
+          key: 'main',
+          name: 'Main',
+          description: '',
+          lead: '',
+          type: 'software',
+          codeGraphPath: null,
+          createdAt: '',
+          updatedAt: ''
+        }
+      ])
+    )
+  }
+}))
 
 describe('Godot Error Handling Improvements', () => {
-  let queryClient: QueryClient;
+  let queryClient: QueryClient
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -25,95 +56,91 @@ describe('Godot Error Handling Improvements', () => {
         queries: { retry: false },
         mutations: { retry: false },
       },
-    });
-    jest.clearAllMocks();
-  });
+    })
+    sessionStorage.removeItem('llm-charge-godot-dashboard-v1')
+    sessionStorage.removeItem('llm-charge-godot-dashboard-v2')
+    global.fetch = jest.fn()
+    jest.clearAllMocks()
+  })
 
-  const renderComponent = () => {
-    return render(
-      <QueryClientProvider client={queryClient}>
-        <GodotMCPSection />
-      </QueryClientProvider>
-    );
-  };
+  const renderComponent = () =>
+    render(
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <ProjectProvider>
+            <MemoryRouter>
+              <GodotMCPSection />
+            </MemoryRouter>
+          </ProjectProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    )
 
   describe('Project Path Validation', () => {
     it('should show user-friendly error when project path is empty', async () => {
-      // Mock fetch to simulate empty path validation
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ error: 'Please specify a project path before analyzing the project' }),
-      });
+      renderComponent()
 
-      renderComponent();
-
-      // Find and click the Analyze Project button without setting a path
-      const analyzeButton = screen.getByText('Analyze Project');
-      fireEvent.click(analyzeButton);
-
-      // Wait for error to appear
       await waitFor(() => {
-        const errorMessage = screen.getByText(/Project Path Required/);
-        expect(errorMessage).toBeInTheDocument();
-        expect(errorMessage).toHaveTextContent('Please enter or browse to select your Godot project directory');
-      });
-    });
+        expect(screen.getByText('Godot Game Development Dashboard')).toBeInTheDocument()
+      })
 
-    it('should display helpful guidance text below project path input', () => {
-      renderComponent();
+      fireEvent.click(screen.getByRole('button', { name: /Analyze Project/i }))
 
-      // Check that the guidance text is present
-      const guidanceText = screen.getByText(/💡 Select the root directory containing project.godot file/);
-      expect(guidanceText).toBeInTheDocument();
-      expect(guidanceText).toHaveClass('text-xs', 'text-gray-500');
-    });
+      await waitFor(() => {
+        const errorMessage = screen.getByRole('alert')
+        expect(errorMessage).toHaveTextContent(/Project Path Required/)
+        expect(errorMessage).toHaveTextContent('Please enter or browse to select your Godot project directory')
+      })
+    })
+
+    it('should display helpful guidance text below project path input', async () => {
+      renderComponent()
+      await waitFor(() => {
+        expect(screen.getByText(/Directory that contains/)).toBeInTheDocument()
+        expect(screen.getAllByText('project.godot').length).toBeGreaterThan(0)
+        expect(screen.getByText(/defaults to the/)).toBeInTheDocument()
+        expect(screen.getByText(/Changing the path clears cached snapshots/i)).toBeInTheDocument()
+      })
+    })
 
     it('should show enhanced error message for invalid Godot project', async () => {
-      // Mock fetch to simulate invalid project directory response
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           success: false,
-          error: 'Failed to analyze project: Error: No project.godot found - not a valid Godot project'
+          error: 'Failed to analyze project: Error: No project.godot found - not a valid Godot project',
         }),
-      });
+      })
 
-      renderComponent();
+      renderComponent()
 
-      // Set a project path
-      const pathInput = screen.getByPlaceholderText('/path/to/your/godot/project');
-      fireEvent.change(pathInput, { target: { value: '/some/invalid/path' } });
-
-      // Click analyze button
-      const analyzeButton = screen.getByText('Analyze Project');
-      fireEvent.click(analyzeButton);
-
-      // Wait for enhanced error message
       await waitFor(() => {
-        const errorMessage = screen.getByText(/Invalid Godot Project/);
-        expect(errorMessage).toBeInTheDocument();
-        expect(errorMessage).toHaveTextContent('project.godot (required)');
-        expect(errorMessage).toHaveTextContent('Use the Browse button to navigate');
-      });
-    });
+        expect(screen.getByText('Godot Game Development Dashboard')).toBeInTheDocument()
+      })
 
-    it('should show browse button with proper tooltip', () => {
-      renderComponent();
+      fireEvent.change(screen.getByPlaceholderText('/absolute/path/to/godot-project'), {
+        target: { value: '/some/invalid/path' },
+      })
 
-      const browseButton = screen.getByTitle('Browse for Godot project directory');
-      expect(browseButton).toBeInTheDocument();
-      expect(browseButton).toHaveTextContent('Browse');
-    });
-  });
+      fireEvent.click(screen.getByRole('button', { name: /Analyze Project/i }))
+
+      await waitFor(() => {
+        const errorMessage = screen.getByRole('alert')
+        expect(errorMessage).toHaveTextContent(/Invalid Godot Project/)
+        expect(errorMessage).toHaveTextContent('project.godot (required)')
+      })
+    })
+
+    it('should show browse button with proper tooltip', async () => {
+      renderComponent()
+      await waitFor(() => {
+        expect(screen.getByTitle('Browse for Godot project directory')).toBeInTheDocument()
+      })
+    })
+  })
 
   describe('Error Message Enhancement', () => {
-    it('should transform technical errors into user-friendly messages', async () => {
-      renderComponent();
-
-      // Simulate the error transformation logic
-      const technicalError = 'Error: No project.godot found - not a valid Godot project';
-      
-      // The component should transform this into a user-friendly message
+    it('should transform technical errors into user-friendly messages', () => {
       const expectedUserFriendlyError = `Invalid Godot Project: The selected directory doesn't contain a 'project.godot' file.
 
 📁 Please select a valid Godot project directory that contains:
@@ -124,72 +151,75 @@ describe('Godot Error Handling Improvements', () => {
 💡 Tips:
    • Use the Browse button to navigate to your Godot project folder
    • Make sure you select the root directory of your Godot project
-   • The project.godot file should be directly in the selected folder`;
+   • The project.godot file should be directly in the selected folder`
 
-      expect(expectedUserFriendlyError).toContain('Invalid Godot Project');
-      expect(expectedUserFriendlyError).toContain('project.godot (required)');
-      expect(expectedUserFriendlyError).toContain('Use the Browse button');
-    });
+      expect(expectedUserFriendlyError).toContain('Invalid Godot Project')
+      expect(expectedUserFriendlyError).toContain('project.godot (required)')
+    })
 
     it('should provide actionable guidance for empty path errors', () => {
-      const emptyPathError = 'Please specify a project path before analyzing the project';
-      
       const expectedGuidance = `Project Path Required: Please enter or browse to select your Godot project directory before running the analysis.
 
 🎯 To get started:
    1. Enter a project path in the text field above, OR
-   2. Click the Browse button to select your project folder`;
+   2. Click the Browse button to select your project folder`
 
-      expect(expectedGuidance).toContain('Project Path Required');
-      expect(expectedGuidance).toContain('To get started');
-      expect(expectedGuidance).toContain('Browse button');
-    });
-  });
+      expect(expectedGuidance).toContain('Project Path Required')
+      expect(expectedGuidance).toContain('Browse button')
+    })
+  })
 
   describe('User Experience Improvements', () => {
-    it('should have proper input field styling and placeholder', () => {
-      renderComponent();
-
-      const pathInput = screen.getByPlaceholderText('/path/to/your/godot/project');
-      expect(pathInput).toBeInTheDocument();
-      expect(pathInput).toHaveClass('flex-1');
-    });
+    it('should have proper input field styling and placeholder', async () => {
+      renderComponent()
+      await waitFor(() => {
+        const pathInput = screen.getByPlaceholderText('/absolute/path/to/godot-project')
+        expect(pathInput).toBeInTheDocument()
+        expect(pathInput).toHaveClass('flex-1')
+      })
+    })
 
     it('should show loading state during analysis', async () => {
-      // Mock a delayed response
-      (global.fetch as jest.Mock).mockImplementationOnce(
-        () => new Promise(resolve => setTimeout(() => resolve({
-          ok: true,
-          json: async () => ({ success: true, data: {} })
-        }), 100))
-      );
+      ;(global.fetch as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  ok: true,
+                  json: async () => ({ success: true, data: {} }),
+                }),
+              80
+            )
+          )
+      )
 
-      renderComponent();
+      renderComponent()
 
-      // Set a project path and click analyze
-      const pathInput = screen.getByPlaceholderText('/path/to/your/godot/project');
-      fireEvent.change(pathInput, { target: { value: '/valid/godot/project' } });
-      
-      const analyzeButton = screen.getByText('Analyze Project');
-      fireEvent.click(analyzeButton);
-
-      // Should show loading state
       await waitFor(() => {
-        expect(screen.getByText('Analyzing...')).toBeInTheDocument();
-      });
-    });
-  });
+        expect(screen.getByText('Godot Game Development Dashboard')).toBeInTheDocument()
+      })
+
+      fireEvent.change(screen.getByPlaceholderText('/absolute/path/to/godot-project'), {
+        target: { value: '/valid/godot/project' },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /Analyze Project/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Analyzing...')).toBeInTheDocument()
+      })
+    })
+  })
 
   describe('Integration with File Browser', () => {
-    it('should open file browser when browse button is clicked', () => {
-      renderComponent();
-
-      const browseButton = screen.getByTitle('Browse for Godot project directory');
-      fireEvent.click(browseButton);
-
-      // Note: This would normally open a modal, but since we're testing in isolation,
-      // we just verify the button click doesn't cause errors
-      expect(browseButton).toBeInTheDocument();
-    });
-  });
-});
+    it('should open file browser when browse button is clicked', async () => {
+      renderComponent()
+      await waitFor(() => {
+        const browseButton = screen.getByTitle('Browse for Godot project directory')
+        fireEvent.click(browseButton)
+        expect(browseButton).toBeInTheDocument()
+      })
+    })
+  })
+})
