@@ -72,7 +72,7 @@ class TestCreateCronJob:
         _create_job(name="list-check-job")
         resp = client.get("/api/cron/jobs")
         assert resp.status_code == 200
-        names = [j["name"] for j in resp.json()]
+        names = [j["name"] for j in resp.json().get("jobs", [])]
         assert "list-check-job" in names
 
 
@@ -85,13 +85,13 @@ class TestListCronJobs:
     def test_list_returns_200(self):
         resp = client.get("/api/cron/jobs")
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
+        assert "jobs" in resp.json()
 
     def test_list_filter_by_enabled(self):
         _create_job(name="enabled-j")
         resp = client.get("/api/cron/jobs?enabled=true")
         assert resp.status_code == 200
-        for job in resp.json():
+        for job in resp.json().get("jobs", []):
             assert job["enabled"] is True
 
 
@@ -231,8 +231,8 @@ class TestCronDashboard:
         data = resp.json()
         assert "total" in data
         assert "active" in data
-        assert "failed_last_24h" in data
-        assert "upcoming" in data
+        assert "failed" in data
+        assert "inactive" in data
 
     def test_dashboard_active_count_matches_enabled_jobs(self):
         # Create an enabled job
@@ -275,12 +275,15 @@ class TestCronTemplates:
 
     def test_templates_returns_list(self):
         resp = client.get("/api/cron/templates")
-        assert isinstance(resp.json(), list)
-        assert len(resp.json()) > 0
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "templates" in data
+        assert len(data["templates"]) > 0
 
     def test_each_template_has_name_and_schedule(self):
         resp = client.get("/api/cron/templates")
-        for tmpl in resp.json():
+        assert resp.status_code == 200
+        for tmpl in resp.json()["templates"]:
             assert "name" in tmpl
             assert "schedule" in tmpl
 

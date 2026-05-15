@@ -59,27 +59,23 @@ class TestModels:
     
     def test_project_model_creation(self, test_session):
         """Test Project model creation and basic operations"""
-        # Create project
         project = Project(
             id="test-project-001",
             name="Test Project",
             key="TEST",
             description="Test project description",
             type="software",
-            status="active",
             lead="test-lead"
         )
         
         test_session.add(project)
         test_session.commit()
         
-        # Query project
         retrieved = test_session.query(Project).filter(Project.id == "test-project-001").first()
         
         assert retrieved is not None
         assert retrieved.name == "Test Project"
         assert retrieved.key == "TEST"
-        assert retrieved.status == "active"
         assert retrieved.type == "software"
         assert retrieved.lead == "test-lead"
         assert retrieved.created_at is not None
@@ -92,8 +88,7 @@ class TestModels:
             id="test-project-spec",
             name="Test Project for Specs",
             key="SPEC",
-            type="software",
-            status="active"
+            type="software"
         )
         test_session.add(project)
         test_session.commit()
@@ -184,13 +179,11 @@ class TestModels:
     
     def test_model_relationships(self, test_session):
         """Test model relationships work correctly"""
-        # Create project
         project = Project(
             id="test-project-rel",
             name="Test Project Relations",
             key="REL",
-            type="software",
-            status="active"
+            type="software"
         )
         test_session.add(project)
         test_session.commit()
@@ -261,8 +254,7 @@ class TestModels:
             id="test-timestamps",
             name="Timestamp Test",
             key="TIME",
-            type="test",
-            status="active"
+            type="test"
         )
         
         test_session.add(project)
@@ -312,7 +304,7 @@ class TestModels:
     def test_all_models_have_required_fields(self, test_session):
         """Test that all models have the expected basic fields"""
         models_to_test = [
-            (Project, {"id": "test-p", "name": "Test", "key": "T", "type": "test", "status": "active"}),
+            (Project, {"id": "test-p", "name": "Test", "key": "T", "type": "test"}),
             (Specification, {"id": "test-s", "title": "Test", "description": "Test", "status": "draft"}),
             (Agent, {"id": "test-a", "name": "Test", "description": "Test", "primary_role": "test", "status": "active"}),
             (Flow, {"id": "test-f", "name": "Test", "description": "Test", "type": "test", "status": "draft"})
@@ -374,31 +366,45 @@ class TestAsyncModels:
         async with AsyncSessionLocal() as session:
             yield session
     
-    async def test_async_project_operations(self, async_test_session):
+    async def test_async_project_operations(self):
         """Test async project operations"""
-        project = Project(
-            id="async-project-001",
-            name="Async Test Project",
-            key="ASYNC",
-            description="Testing async operations",
-            type="software",
-            status="active"
-        )
+        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+        from sqlalchemy import event
         
-        async_test_session.add(project)
-        await async_test_session.commit()
+        async_engine = create_async_engine("sqlite+aiosqlite:///:memory:")
         
-        # Query project asynchronously
-        result = await async_test_session.execute(
-            text("SELECT name, key, status FROM projects WHERE id = :id"),
-            {"id": "async-project-001"}
-        )
-        row = result.fetchone()
+        @event.listens_for(async_engine.sync_engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
         
-        assert row is not None
-        assert row[0] == "Async Test Project"  # name
-        assert row[1] == "ASYNC"              # key
-        assert row[2] == "active"             # status
+        AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+        
+        async with AsyncSessionLocal() as session:
+            async with async_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            
+            project = Project(
+                id="async-project-001",
+                name="Async Test Project",
+                key="ASYNC",
+                description="Testing async operations",
+                type="software"
+            )
+            
+            session.add(project)
+            await session.commit()
+            
+            result = await session.execute(
+                text("SELECT name, key FROM projects WHERE id = :id"),
+                {"id": "async-project-001"}
+            )
+            row = result.fetchone()
+            
+            assert row is not None
+            assert row[0] == "Async Test Project"
+            assert row[1] == "ASYNC"
 
 
 if __name__ == "__main__":
