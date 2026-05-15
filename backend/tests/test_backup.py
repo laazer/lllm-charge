@@ -12,7 +12,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from app.database.backup import DatabaseBackup, RestoreManager
+from app.database.backup import DatabaseBackup
 from app.database.models.main import Base, Project, Specification
 from app.database.models.agents import Agent
 from app.database.models.flows import Flow
@@ -28,8 +28,8 @@ class TestDatabaseBackup:
     
     @pytest.fixture
     def restore_instance(self):
-        """Create RestoreManager instance for testing"""
-        return RestoreManager()
+        """Create DatabaseBackup instance for restore testing"""
+        return DatabaseBackup()
     
     @pytest.fixture
     def temp_db_with_data(self):
@@ -116,8 +116,8 @@ class TestDatabaseBackup:
         
         # Test backup creation (conceptual test)
         backup_result = await backup_instance.backup_database(
-            source_db=temp_db_with_data,
-            backup_name="test_backup"
+            database_names=["main"],
+            compress=True
         )
         
         # Verify backup was created
@@ -143,8 +143,8 @@ class TestDatabaseBackup:
         try:
             # Test restore operation
             restore_result = await restore_instance.restore_database(
-                backup_file=backup_file,
-                target_db=restore_target
+                backup_id="test_backup",
+                database_names=["main"]
             )
             
             # Verify restore was successful

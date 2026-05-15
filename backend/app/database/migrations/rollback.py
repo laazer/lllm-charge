@@ -17,7 +17,7 @@ from app.database.database import get_db
 from app.database.migrations.operation_result import database_operation, make_operation_result
 from app.database.models.agents import Agent, AgentTask, AgentLearning, AgentCollaboration
 from app.database.models.flows import Flow, FlowExecution, FlowTemplate, FlowVersion, FlowSchedule
-from app.database.models.main import Project, Specification, Note, Checkpoint
+from app.database.models.main import Project, Specification, Note
 from app.database.models.metrics import (
     AlertMetric,
     CostMetric,

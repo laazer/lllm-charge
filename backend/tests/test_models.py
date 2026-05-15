@@ -12,7 +12,7 @@ import tempfile
 import os
 
 # Import all models
-from app.database.models.main import Base, Project, Specification, Note, Checkpoint
+from app.database.models.main import Base, Project, Specification, Note
 from app.database.models.agents import Agent, AgentTask, AgentLearning, AgentCollaboration
 from app.database.models.flows import Flow, FlowExecution, FlowTemplate, FlowVersion, FlowSchedule
 from app.database.models.metrics import (

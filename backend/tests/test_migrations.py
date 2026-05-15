@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 
-from app.database.migrations.migrate_from_js import DataMigrator, MigrationRunner
+from app.database.migrations.migrate_from_js import DataMigrator
 from app.database.migrations.rollback import MigrationRollback
 from app.database.backup import DatabaseBackup
 
@@ -50,7 +50,7 @@ async def temp_migration_setup():
 @pytest.fixture
 def migration_runner():
     """Create migration runner instance"""
-    return MigrationRunner()
+    return DataMigrator()
 
 
 @pytest.fixture

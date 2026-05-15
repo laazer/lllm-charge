@@ -13,7 +13,7 @@ from pathlib import Path
 
 from app.database.migrations.migrate_from_js import DatabaseMigration
 from app.database.migrations.rollback import MigrationRollback
-from app.database.models.main import Project, Specification, Note, Checkpoint
+from app.database.models.main import Project, Specification, Note
 from app.database.models.agents import Agent, AgentTask, AgentLearning, AgentCollaboration
 from app.database.models.flows import Flow, FlowExecution, FlowTemplate, FlowVersion, FlowSchedule
 
