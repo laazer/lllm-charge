@@ -24,6 +24,7 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
+      diagnostics: { warnOnly: true },
       tsconfig: {
         jsx: 'react-jsx',
         esModuleInterop: true,
@@ -31,6 +32,7 @@ module.exports = {
         moduleResolution: 'node',
         target: 'ES2020',
         lib: ['ES2020', 'DOM', 'DOM.Iterable'],
+        types: ['@testing-library/jest-dom', 'jest'],
       },
     }],
   },

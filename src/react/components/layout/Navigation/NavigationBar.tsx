@@ -17,6 +17,8 @@ import {
   CommandLineIcon,
   CubeIcon,
   ChatBubbleLeftRightIcon,
+  WrenchScrewdriverIcon,
+  RocketLaunchIcon,
 } from '@heroicons/react/24/outline'
 
 interface NavigationBarProps {
@@ -137,6 +139,24 @@ const secondaryNavigationItems = [
     label: 'Blender 3D',
     icon: CubeIcon,
     description: '3D generation pipeline with Blender integration'
+  },
+  {
+    id: 'tools',
+    label: 'Tools Config',
+    icon: Cog6ToothIcon,
+    description: 'Configure MCP tools and manage tool categories'
+  },
+  {
+    id: 'tool-explorer',
+    label: 'Tool Explorer',
+    icon: WrenchScrewdriverIcon,
+    description: 'Browse and invoke MCP tools interactively'
+  },
+  {
+    id: 'agent',
+    label: 'Agent Runner',
+    icon: RocketLaunchIcon,
+    description: 'Give the AI agent a goal and let it choose its tools'
   }
 ]
 
@@ -175,21 +195,19 @@ export function NavigationBar({ currentSection, onSectionChange }: NavigationBar
           </div>
           
           {/* Overflow menu for secondary tabs */}
-          <div className="flex-shrink-0">
-            <OverflowMenu
-              items={secondaryNavigationItems.map((item) => ({
-                id: item.id,
-                label: item.label,
-                icon: item.icon,
-                onClick: () => handleSectionChange(item.id),
-                variant: currentSection === item.id ? 'success' : 'default'
-              }))}
-              buttonLabel="More"
-              buttonVariant="outline"
-              position="bottom-right"
-              className=""
-            />
-          </div>
+          <OverflowMenu
+            items={secondaryNavigationItems.map((item) => ({
+              id: item.id,
+              label: item.label,
+              icon: item.icon,
+              onClick: () => handleSectionChange(item.id),
+              variant: currentSection === item.id ? 'success' : 'default'
+            }))}
+            buttonLabel="More"
+            buttonVariant="outline"
+            position="bottom-right"
+            className="flex-shrink-0"
+          />
         </div>
       </div>
     </nav>

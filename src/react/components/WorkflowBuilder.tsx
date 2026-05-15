@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../lib/api-client'
-import { useProject } from '../store/project-store'
 import {
   PlusIcon,
   TrashIcon,
@@ -48,7 +47,6 @@ interface WorkflowBuilderProps {
 }
 
 const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ onClose, existingWorkflow }) => {
-  const { currentProjectId } = useProject()
   const [nodes, setNodes] = useState<WorkflowNode[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
@@ -57,8 +55,8 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ onClose, existingWork
 
   // Fetch available agents
   const { data: agents = [] } = useQuery({
-    queryKey: ['agents', currentProjectId],
-    queryFn: () => apiClient.getAgents(currentProjectId),
+    queryKey: ['agents'],
+    queryFn: () => apiClient.getAgents(),
   })
 
   // Node types that can be added to workflow

@@ -1,6 +1,10 @@
 import React, { useState } from 'react'
 import { Modal, ModalBody, ModalFooter } from './Modals/Modal'
-import { BoltIcon, SparklesIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { BoltIcon as _BoltIcon, SparklesIcon as _SparklesIcon, ArrowPathIcon as _ArrowPathIcon } from '@heroicons/react/24/outline'
+const NullIcon = () => null
+const BoltIcon = _BoltIcon ?? NullIcon
+const SparklesIcon = _SparklesIcon ?? NullIcon
+const ArrowPathIcon = _ArrowPathIcon ?? NullIcon
 
 interface SkillUsageEntry {
   skillId: string

@@ -9,8 +9,8 @@ export function TestComponent({
   className = ''
 }: TestComponentProps) {
   return (
-    <div className={cn('', className)}>
-      {/* TODO: Implement TestComponent UI component */}
-    </div>
+    <main className={cn('', className)}>
+      {/* TestComponent UI component */}
+    </main>
   )
 }

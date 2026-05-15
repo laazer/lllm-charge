@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { jest } from '@jest/globals'
 import SpecsSection from '../../../../src/react/pages/sections/SpecsSection'
-import { ProjectProvider } from '../../../../src/react/store/project-store'
 import * as apiClient from '../../../../src/react/lib/api-client'
 
 // Mock the API client
@@ -85,9 +84,7 @@ const renderSpecsSection = () => {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <ProjectProvider>
-        <SpecsSection />
-      </ProjectProvider>
+      <SpecsSection />
     </QueryClientProvider>
   )
 }

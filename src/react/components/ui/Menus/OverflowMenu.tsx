@@ -31,6 +31,11 @@ export function OverflowMenu({
   const menuRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
+  // Close menu when position prop changes
+  useEffect(() => {
+    setIsOpen(false)
+  }, [position])
+
   // Close menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -163,19 +168,24 @@ export function OverflowMenu({
             event.stopPropagation()
             setIsOpen(!isOpen)
           }}
-          aria-expanded={isOpen}
+          aria-expanded={isOpen ? 'true' : 'false'}
           aria-haspopup="true"
         >
           <span className="sr-only">Open menu</span>
           <EllipsisHorizontalIcon className="h-4 w-4" />
-          {buttonLabel && <span className="ml-2">{buttonLabel}</span>}
+          {buttonLabel && <span className="ml-2" aria-expanded={isOpen ? 'true' : 'false'} aria-haspopup="true">{buttonLabel}</span>}
         </button>
       </div>
 
       {isOpen && createPortal(
         <div
           ref={menuRef}
-          className="fixed z-[9999]"
+          className={`fixed z-[9999] ${
+            position === 'bottom-right' ? 'origin-top-right right-0 mt-2' :
+            position === 'bottom-left' ? 'origin-top-left left-0 mt-2' :
+            position === 'top-right' ? 'origin-bottom-right right-0 mb-2' :
+            'origin-bottom-left left-0 mb-2'
+          }`}
           style={{
             top: `${menuPosition.top}px`,
             left: `${menuPosition.left}px`,

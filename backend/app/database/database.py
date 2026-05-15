@@ -1,12 +1,10 @@
 """
 Database connection management for LLM-Charge FastAPI backend
 """
-from pathlib import Path
-
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
+from app.database.models.base import Base as ModelsBase  # shared Base all models register against
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from app.config import settings
 import logging
@@ -15,17 +13,23 @@ from contextlib import asynccontextmanager
 
 logger = logging.getLogger("llm-charge")
 
-# SQLite uses NullPool; pool_size / max_overflow are invalid for this dialect
+# Create database engine with connection pooling
 engine = create_engine(
     settings.database_url,
-    connect_args={"check_same_thread": False},
-    echo=False,
+    connect_args={"check_same_thread": False},  # SQLite specific
+    pool_size=20,
+    max_overflow=30,
+    echo=False
 )
 
+# Create async engine for async operations (SQLite does not support pool_size/max_overflow)
+_async_db_url = settings.database_url.replace('sqlite:///', 'sqlite+aiosqlite:///')
+_is_sqlite = 'sqlite' in _async_db_url
 async_engine = create_async_engine(
-    settings.database_url.replace("sqlite:///", "sqlite+aiosqlite:///"),
-    connect_args={"check_same_thread": False},
-    echo=False,
+    _async_db_url,
+    connect_args={"check_same_thread": False} if _is_sqlite else {},
+    **({} if _is_sqlite else {"pool_size": 20, "max_overflow": 30}),
+    echo=False
 )
 
 # Create session factory
@@ -105,29 +109,16 @@ async def database_health_check() -> bool:
         return False
 
 
-def _ensure_sqlite_parent_dir(url: str) -> None:
-    """Create parent directory for file-based SQLite URLs so create_engine can open the file."""
-    try:
-        u = make_url(url)
-    except Exception:
-        return
-    if not u.drivername.startswith("sqlite"):
-        return
-    db = u.database
-    if not db or db == ":memory:":
-        return
-    p = Path(db)
-    if not p.is_absolute():
-        p = Path.cwd() / p
-    if p.parent and str(p.parent) not in (".", ""):
-        p.parent.mkdir(parents=True, exist_ok=True)
-
-
 def init_database():
     """Initialize database tables"""
     try:
-        _ensure_sqlite_parent_dir(settings.database_url)
-        Base.metadata.create_all(bind=engine)
+        # Import all models so their tables are registered with Base.metadata
+        from app.database.models import agents, workflows, flows, metrics  # noqa: F401
+        from app.database.models import main  # noqa: F401 — loads Project, Specification, Note
+        import app.cron.models  # noqa: F401 — loads CronJob, CronExecution
+        import app.database.models.buddies  # noqa: F401 — loads Buddy, BuddyMessage
+        import app.database.models.memory  # noqa: F401 — loads MemoryNote, MemoryCheckpoint
+        ModelsBase.metadata.create_all(bind=engine)
         logger.info("Database initialized")
     except ConnectionError as e:
         logger.error(f"Database initialization failed: {e}")

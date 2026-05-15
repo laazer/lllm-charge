@@ -1,25 +1,150 @@
 """
 API routes for project management
 """
-from fastapi import APIRouter
-from typing import List
+import os
+import uuid
+from datetime import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_db
+from app.database.models.main import Project
 
 router = APIRouter()
 
 
-@router.get("/projects", response_model=List[dict])
-async def get_projects():
-    """Get all projects"""
-    return []
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    path: Optional[str] = None
+    key: Optional[str] = None
+    type: Optional[str] = None
 
 
-@router.get("/projects/{project_id}")
-async def get_project(project_id: str):
-    """Get specific project"""
-    return {"id": project_id, "name": "Test Project"}
+class ProjectResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str]
+    key: Optional[str]
+    type: Optional[str]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
 
 
-@router.post("/projects")
-async def create_project(project_data: dict):
-    """Create new project"""
-    return {"id": "new-project", "status": "created"}
+class ProjectListResponse(BaseModel):
+    projects: List[ProjectResponse]
+    total: int
+
+
+class ScanRequest(BaseModel):
+    path: str
+
+
+def _project_to_response(proj: Project) -> ProjectResponse:
+    return ProjectResponse(
+        id=proj.id,
+        name=proj.name,
+        description=proj.description,
+        key=proj.key,
+        type=proj.type,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+    )
+
+
+@router.get("/", response_model=ProjectListResponse)
+async def list_projects(db: Session = Depends(get_db)):
+    projects = db.query(Project).all()
+    return ProjectListResponse(
+        projects=[_project_to_response(p) for p in projects],
+        total=len(projects),
+    )
+
+
+@router.post("/", response_model=ProjectResponse, status_code=201)
+async def create_project(payload: ProjectCreate, db: Session = Depends(get_db)):
+    project = Project(
+        id=str(uuid.uuid4()),
+        name=payload.name,
+        description=payload.description,
+        key=payload.key,
+        type=payload.type,
+    )
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return _project_to_response(project)
+
+
+@router.get("/{project_id}", response_model=ProjectResponse)
+async def get_project(project_id: str, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return _project_to_response(project)
+
+
+@router.put("/{project_id}", response_model=ProjectResponse)
+async def update_project(
+    project_id: str, payload: ProjectCreate, db: Session = Depends(get_db)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    project.name = payload.name
+    if payload.description is not None:
+        project.description = payload.description
+    if payload.key is not None:
+        project.key = payload.key
+    if payload.type is not None:
+        project.type = payload.type
+    db.commit()
+    db.refresh(project)
+    return _project_to_response(project)
+
+
+@router.delete("/{project_id}", status_code=204)
+async def delete_project(project_id: str, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    db.delete(project)
+    db.commit()
+
+
+@router.post("/scan")
+async def scan_projects(body: ScanRequest):
+    scan_path = body.path
+    discovered = []
+    if os.path.isdir(scan_path):
+        for entry in os.scandir(scan_path):
+            if entry.is_dir():
+                discovered.append({
+                    "name": entry.name,
+                    "path": entry.path,
+                    "type": "directory",
+                })
+    return {"projects": discovered}
+
+
+@router.post("/import-samples")
+async def import_sample_projects(db: Session = Depends(get_db)):
+    samples = [
+        {"name": "Sample Web App", "description": "A sample web application", "type": "web"},
+        {"name": "Sample API", "description": "A sample REST API", "type": "api"},
+    ]
+    created = []
+    for sample in samples:
+        existing = db.query(Project).filter(Project.name == sample["name"]).first()
+        if not existing:
+            project = Project(id=str(uuid.uuid4()), **sample)
+            db.add(project)
+            created.append(sample["name"])
+    db.commit()
+    return {"imported": created}

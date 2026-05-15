@@ -130,8 +130,8 @@ const Memory: React.FC = () => {
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null)
 
   const { data: notes = [], isLoading } = useQuery({
-    queryKey: ['memory-notes', currentProjectId],
-    queryFn: () => apiClient.getMemoryNotes(currentProjectId),
+    queryKey: ['memory-notes'],
+    queryFn: () => apiClient.getMemoryNotes(),
     refetchInterval: 30000,
   })
 
@@ -151,7 +151,7 @@ const Memory: React.FC = () => {
       tags,
       projectId: currentProjectId,
     })
-    await queryClient.invalidateQueries({ queryKey: ['memory-notes', currentProjectId] })
+    await queryClient.invalidateQueries({ queryKey: ['memory-notes'] })
   }
 
   const handleUpdate = async (form: NoteFormState) => {
@@ -162,14 +162,14 @@ const Memory: React.FC = () => {
       content: form.content,
       tags,
     } as any)
-    await queryClient.invalidateQueries({ queryKey: ['memory-notes', currentProjectId] })
+    await queryClient.invalidateQueries({ queryKey: ['memory-notes'] })
   }
 
   const handleDelete = async () => {
     if (!deletingNote) return
     await apiClient.deleteMemoryNote(deletingNote.id)
     setDeletingNote(null)
-    await queryClient.invalidateQueries({ queryKey: ['memory-notes', currentProjectId] })
+    await queryClient.invalidateQueries({ queryKey: ['memory-notes'] })
   }
 
   if (isLoading) {

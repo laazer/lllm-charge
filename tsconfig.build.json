@@ -1,16 +1,14 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "declaration": false,
-    "declarationMap": false,
     "noEmitOnError": false
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*"
+  ],
   "exclude": [
     "node_modules",
     "dist",
-    "tests/**/*",
-    "src/react/**/*",
-    "src/react-tools/**/*"
+    "tests"
   ]
 }

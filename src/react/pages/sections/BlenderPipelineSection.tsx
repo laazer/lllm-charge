@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { MetricCard } from '../../components/ui/Cards/MetricCard'
 import {
   CubeIcon,
@@ -19,6 +19,11 @@ import {
   Cog6ToothIcon,
   ViewfinderCircleIcon,
   Square3Stack3DIcon,
+  BoltIcon,
+  CommandLineIcon,
+  DocumentArrowDownIcon,
+  RocketLaunchIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline'
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -293,226 +298,461 @@ function OverviewTab() {
 // ── Tab: Generate ──────────────────────────────────────────────────
 
 function GenerateTab() {
-  const [generatorType, setGeneratorType] = useState<string>('parametric')
-  const [shape, setShape] = useState('sphere')
-  const [lsystemPreset, setLsystemPreset] = useState('tree')
-  const [textPrompt, setTextPrompt] = useState('')
-  const [materialPreset, setMaterialPreset] = useState('metal')
-  const [lightingStyle, setLightingStyle] = useState('studio_3point')
-  const [animationTemplate, setAnimationTemplate] = useState('bounce')
-  const [exportFormat, setExportFormat] = useState('GLB')
+  // Enemy generation state (main feature from blender-experiments)
+  const [enemyType, setEnemyType] = useState<string>('adhesion_bug')
+  const [count, setCount] = useState<number>(1)
+  const [seed, setSeed] = useState<number>(42)
+  const [animationSet, setAnimationSet] = useState<string>('all')
+  const [bodyType, setBodyType] = useState<string>('quadruped')
+  
+  // Advanced options
+  const [prefabName, setPrefabName] = useState<string>('')
+  const [difficulty, setDifficulty] = useState<string>('normal')
+  const [smartDescription, setSmartDescription] = useState<string>('')
+  const [exportStats, setExportStats] = useState<string>('json')
+  const [useSmartGeneration, setUseSmartGeneration] = useState<boolean>(false)
+  
+  // UI state
+  const [isGenerating, setIsGenerating] = useState<boolean>(false)
+  const [lastJobId, setLastJobId] = useState<string | null>(null)
+  const [blenderStatus, setBlenderStatus] = useState<any>(null)
+  
+  // Check Blender system status on component mount
+  useEffect(() => {
+    const checkBlenderStatus = async () => {
+      try {
+        const response = await fetch('/api/blender/status')
+        const status = await response.json()
+        setBlenderStatus(status)
+        console.log('Blender system status:', status)
+      } catch (error) {
+        console.error('Failed to check Blender status:', error)
+      }
+    }
+    
+    checkBlenderStatus()
+  }, [])
+  
+  // Available options from blender-experiments
+  const ENEMY_TYPES = [
+    { id: 'adhesion_bug', name: 'Adhesion Bug', bodyType: 'quadruped', description: '6-legged creature with pounce attacks' },
+    { id: 'tar_slug', name: 'Tar Slug', bodyType: 'blob', description: 'Squash/stretch blob with expansion slam' },
+    { id: 'ember_imp', name: 'Ember Imp', bodyType: 'humanoid', description: 'Bipedal fire imp with punch attacks' },
+  ]
+  
+  const ANIMATION_SETS = [
+    { id: 'core', name: 'Core (5 anims)', description: 'idle, move, attack, damage, death' },
+    { id: 'all', name: 'All (13 anims)', description: 'includes spawn, special_attack, stun, celebrate, taunt' },
+  ]
+  
+  const DIFFICULTY_LEVELS = [
+    { id: 'easy', name: 'Easy', color: 'text-green-600' },
+    { id: 'normal', name: 'Normal', color: 'text-blue-600' },
+    { id: 'hard', name: 'Hard', color: 'text-orange-600' },
+    { id: 'nightmare', name: 'Nightmare', color: 'text-red-600' },
+  ]
+
+  const handleGenerate = async () => {
+    setIsGenerating(true)
+    try {
+      const jobId = `job_${Date.now()}`
+      setLastJobId(jobId)
+      
+      let response
+      
+      if (useSmartGeneration) {
+        // Call smart generation API
+        response = await fetch('/api/blender/generate/smart', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            description: smartDescription,
+            difficulty,
+            exportStats,
+          }),
+        })
+      } else {
+        // Call direct enemy generation API  
+        response = await fetch('/api/blender/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            enemyType,
+            count,
+            seed,
+            animationSet,
+          }),
+        })
+      }
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Generation failed')
+      }
+      
+      // Success! Log the results and show user feedback
+      console.log('✅ Blender generation completed:', result)
+      
+      if (result.generatedFiles && result.generatedFiles.length > 0) {
+        console.log('Generated files:', result.generatedFiles)
+        // You could show a success toast notification here
+        alert(`Generation complete! Created ${result.generatedFiles.length} files:\n${result.generatedFiles.map(f => f.filename).join('\n')}`)
+      } else {
+        console.log('Generation command output:', result.output)
+        alert('Generation completed successfully!')
+      }
+      
+    } catch (error) {
+      console.error('❌ Generation failed:', error)
+      alert(`Generation failed: ${error.message}`)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
-      {/* Generator Type Selector */}
+      {/* Quick Generation Mode Selector */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Generator Type</h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: 'parametric', label: 'Parametric', icon: CubeIcon },
-            { id: 'noise', label: 'Noise Terrain', icon: SparklesIcon },
-            { id: 'lsystem', label: 'L-System', icon: Square3Stack3DIcon },
-            { id: 'text_to_3d', label: 'Text to 3D', icon: CpuChipIcon },
-            { id: 'kitbash', label: 'Kitbash Building', icon: Cog6ToothIcon },
-          ].map(gen => (
-            <button
-              key={gen.id}
-              onClick={() => setGeneratorType(gen.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                generatorType === gen.id
-                  ? 'bg-blue-500 text-white shadow-md'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              <gen.icon className="w-4 h-4" />
-              {gen.label}
-            </button>
-          ))}
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+          <BoltIcon className="w-4 h-4" /> Generation Mode
+        </h3>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setUseSmartGeneration(false)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              !useSmartGeneration
+                ? 'bg-blue-500 text-white shadow-md'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            <CommandLineIcon className="w-4 h-4" />
+            Direct Enemy Generation
+          </button>
+          <button
+            onClick={() => setUseSmartGeneration(true)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              useSmartGeneration
+                ? 'bg-purple-500 text-white shadow-md'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            <BeakerIcon className="w-4 h-4" />
+            AI-Assisted Smart Generation
+          </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Generator Config */}
+        {/* Enemy Configuration */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Configuration</h3>
-
-          {generatorType === 'parametric' && (
-            <div className="space-y-3">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Shape</label>
-              <div className="grid grid-cols-3 gap-2">
-                {SHAPE_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setShape(opt.value)}
-                    className={`px-3 py-2 rounded text-sm ${
-                      shape === opt.value
-                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 ring-1 ring-blue-300 dark:ring-blue-700'
-                        : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+          {!useSmartGeneration ? (
+            <>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <CubeIcon className="w-4 h-4" /> Enemy Configuration
+              </h3>
+              
+              {/* Enemy Type Selector */}
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Enemy Type</label>
+                <div className="space-y-2">
+                  {ENEMY_TYPES.map(enemy => (
+                    <button
+                      key={enemy.id}
+                      onClick={() => {
+                        setEnemyType(enemy.id)
+                        setBodyType(enemy.bodyType)
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
+                        enemyType === enemy.id
+                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 ring-1 ring-blue-300 dark:ring-blue-700'
+                          : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">{enemy.name}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{enemy.description}</div>
+                        </div>
+                        <span className="text-xs font-mono bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                          {enemy.bodyType}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <InputField label="Segments" type="number" defaultValue={32} />
-              <InputField label="Scale" type="number" defaultValue={1.0} step={0.1} />
-            </div>
-          )}
 
-          {generatorType === 'noise' && (
-            <div className="space-y-3">
-              <InputField label="Size X" type="number" defaultValue={10} />
-              <InputField label="Size Y" type="number" defaultValue={10} />
-              <InputField label="Subdivisions" type="number" defaultValue={64} />
-              <InputField label="Noise Scale" type="number" defaultValue={3.0} step={0.1} />
-              <InputField label="Height Scale" type="number" defaultValue={2.0} step={0.1} />
-              <InputField label="Octaves" type="number" defaultValue={6} />
-              <InputField label="Seed" type="number" defaultValue={42} />
-            </div>
-          )}
-
-          {generatorType === 'lsystem' && (
-            <div className="space-y-3">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Preset</label>
-              <div className="grid grid-cols-3 gap-2">
-                {PRESET_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setLsystemPreset(opt.value)}
-                    className={`px-3 py-2 rounded text-sm ${
-                      lsystemPreset === opt.value
-                        ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 ring-1 ring-green-300 dark:ring-green-700'
-                        : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+              {/* Count and Seed */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Count</label>
+                  <input
+                    type="number"
+                    value={count}
+                    onChange={e => setCount(parseInt(e.target.value) || 1)}
+                    min={1}
+                    max={10}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Seed</label>
+                  <input
+                    type="number"
+                    value={seed}
+                    onChange={e => setSeed(parseInt(e.target.value) || 42)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
-              <InputField label="Iterations" type="number" defaultValue={4} />
-              <InputField label="Seed" type="number" defaultValue={42} />
-            </div>
-          )}
 
-          {generatorType === 'text_to_3d' && (
-            <div className="space-y-3">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Description</label>
-              <textarea
-                value={textPrompt}
-                onChange={e => setTextPrompt(e.target.value)}
-                placeholder="A medieval castle on a hilltop with towers and a drawbridge..."
-                className="w-full h-32 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          )}
-
-          {generatorType === 'kitbash' && (
-            <div className="space-y-3">
-              <InputField label="Floors" type="number" defaultValue={2} />
-              <InputField label="Width" type="number" defaultValue={4.0} step={0.5} />
-              <InputField label="Depth" type="number" defaultValue={4.0} step={0.5} />
-              <InputField label="Floor Height" type="number" defaultValue={3.0} step={0.5} />
-              <InputField label="Windows" type="number" defaultValue={4} />
-              <div className="flex items-center gap-2">
-                <input type="checkbox" defaultChecked className="rounded border-gray-300 dark:border-gray-600" />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Include Roof</span>
+              {/* Animation Set */}
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Animation Set</label>
+                <div className="space-y-2">
+                  {ANIMATION_SETS.map(animSet => (
+                    <button
+                      key={animSet.id}
+                      onClick={() => setAnimationSet(animSet.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
+                        animationSet === animSet.id
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 ring-1 ring-green-300 dark:ring-green-700'
+                          : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="font-medium text-gray-900 dark:text-white">{animSet.name}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{animSet.description}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+
+              {/* Prefab Integration */}
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Prefab Model (Optional)</label>
+                <input
+                  type="text"
+                  value={prefabName}
+                  onChange={e => setPrefabName(e.target.value)}
+                  placeholder="e.g., dragon, warrior, spider"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">Import FBX/GLB/OBJ and enhance with animations</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <BeakerIcon className="w-4 h-4" /> AI-Assisted Generation
+              </h3>
+              
+              {/* Smart Description */}
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Enemy Description</label>
+                <textarea
+                  value={smartDescription}
+                  onChange={e => setSmartDescription(e.target.value)}
+                  placeholder="large fire spider with powerful attacks and glowing eyes..."
+                  className="w-full h-32 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">AI will generate appropriate enemy type, materials, and animations</p>
+              </div>
+
+              {/* Difficulty Level */}
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Difficulty Level</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {DIFFICULTY_LEVELS.map(diff => (
+                    <button
+                      key={diff.id}
+                      onClick={() => setDifficulty(diff.id)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        difficulty === diff.id
+                          ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                          : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      <span className={difficulty === diff.id ? 'text-purple-700 dark:text-purple-300' : diff.color}>
+                        {diff.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Export Stats Format */}
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Export Stats Format</label>
+                <div className="flex gap-2">
+                  {['json', 'godot'].map(format => (
+                    <button
+                      key={format}
+                      onClick={() => setExportStats(format)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        exportStats === format
+                          ? 'bg-teal-500 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {format.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
 
-        {/* Material + Lighting + Animation + Export */}
+        {/* Quick Actions & Live Preview */}
         <div className="space-y-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-              <PaintBrushIcon className="w-4 h-4" /> Material
+          {/* Generation Progress */}
+          {isGenerating && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                <div>
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100">Generating Enemy...</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {useSmartGeneration ? 'AI analyzing description...' : `Creating ${enemyType} (${count} variants)`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Actions Panel */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-4">
+              <RocketLaunchIcon className="w-4 h-4" /> Quick Actions
             </h3>
-            <div className="flex flex-wrap gap-1.5">
-              {MATERIAL_PRESETS.map(mat => (
+            
+            <div className="space-y-3">
+              {/* Quick Generate Buttons */}
+              <div className="grid grid-cols-1 gap-2">
                 <button
-                  key={mat}
-                  onClick={() => setMaterialPreset(mat)}
-                  className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                    materialPreset === mat
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
+                  onClick={() => {
+                    setCount(1)
+                    setSeed(Math.floor(Math.random() * 1000))
+                    handleGenerate()
+                  }}
+                  disabled={isGenerating}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white font-medium rounded-lg transition-all"
                 >
-                  {mat}
+                  <BoltIcon className="w-4 h-4" />
+                  Quick Generate (Random Seed)
                 </button>
-              ))}
+                
+                <button
+                  onClick={() => {
+                    setCount(3)
+                    handleGenerate()
+                  }}
+                  disabled={isGenerating}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white font-medium rounded-lg transition-all"
+                >
+                  <Square3Stack3DIcon className="w-4 h-4" />
+                  Generate 3 Variants
+                </button>
+              </div>
+
+              {/* Parameter Randomizers */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Quick Tweaks</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setSeed(Math.floor(Math.random() * 1000))}
+                    className="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-all"
+                  >
+                    Randomize Seed
+                  </button>
+                  <button
+                    onClick={() => {
+                      const types = ENEMY_TYPES
+                      const randomType = types[Math.floor(Math.random() * types.length)]
+                      setEnemyType(randomType.id)
+                      setBodyType(randomType.bodyType)
+                    }}
+                    className="px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-all"
+                  >
+                    Random Type
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-              <EyeIcon className="w-4 h-4" /> Lighting
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {LIGHTING_STYLES.map(style => (
-                <button
-                  key={style}
-                  onClick={() => setLightingStyle(style)}
-                  className={`px-3 py-1.5 rounded text-xs font-medium ${
-                    lightingStyle === style
-                      ? 'bg-yellow-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                  }`}
-                >
-                  {style.replace(/_/g, ' ')}
-                </button>
-              ))}
+          {/* CLI Command Preview */}
+          <div className="bg-gray-900 rounded-lg p-4">
+            <h4 className="text-sm font-medium text-gray-200 mb-2 flex items-center gap-2">
+              <CommandLineIcon className="w-4 h-4" /> CLI Command Preview
+            </h4>
+            <div className="font-mono text-xs text-green-400 bg-gray-800 rounded px-3 py-2 overflow-x-auto">
+              {useSmartGeneration ? (
+                `python main.py smart --description "${smartDescription || '[description]'}" --difficulty ${difficulty} --export-stats ${exportStats}`
+              ) : (
+                `python main.py animated ${enemyType} ${count} ${seed}${animationSet !== 'all' ? ` --animation-set ${animationSet}` : ''}${prefabName ? ` --prefab ${prefabName}` : ''}`
+              )}
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-              <FilmIcon className="w-4 h-4" /> Animation
+          {/* Export Options */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-3">
+              <DocumentArrowDownIcon className="w-4 h-4" /> Export Options
             </h3>
-            <div className="flex flex-wrap gap-2">
-              {ANIMATION_TEMPLATES.map(tmpl => (
-                <button
-                  key={tmpl}
-                  onClick={() => setAnimationTemplate(tmpl)}
-                  className={`px-3 py-1.5 rounded text-xs font-medium ${
-                    animationTemplate === tmpl
-                      ? 'bg-indigo-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                  }`}
-                >
-                  {tmpl}
-                </button>
-              ))}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700 dark:text-gray-300">Include Combat Data</span>
+                <input type="checkbox" defaultChecked className="rounded border-gray-300 dark:border-gray-600" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700 dark:text-gray-300">Generate Thumbnails</span>
+                <input type="checkbox" defaultChecked className="rounded border-gray-300 dark:border-gray-600" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700 dark:text-gray-300">Optimize for Godot</span>
+                <input type="checkbox" className="rounded border-gray-300 dark:border-gray-600" />
+              </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-              <FolderArrowDownIcon className="w-4 h-4" /> Export
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {EXPORT_FORMATS.map(fmt => (
-                <button
-                  key={fmt}
-                  onClick={() => setExportFormat(fmt)}
-                  className={`px-3 py-1.5 rounded text-xs font-medium font-mono ${
-                    exportFormat === fmt
-                      ? 'bg-teal-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                  }`}
-                >
-                  {fmt}
-                </button>
-              ))}
+          {/* Last Generation Result */}
+          {lastJobId && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <h4 className="font-medium text-green-900 dark:text-green-100 flex items-center gap-2">
+                <CheckCircleIcon className="w-4 h-4" /> Generation Complete
+              </h4>
+              <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                Job {lastJobId} finished successfully. Files exported to animated_exports/
+              </p>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Generate Button */}
-      <button className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-purple-700 transition-all">
-        <PlayIcon className="w-5 h-5" />
-        Generate 3D Asset
+      <button 
+        onClick={handleGenerate}
+        disabled={isGenerating || (useSmartGeneration && !smartDescription.trim())}
+        className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all"
+      >
+        {isGenerating ? (
+          <>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            Generating...
+          </>
+        ) : (
+          <>
+            <PlayIcon className="w-5 h-5" />
+            {useSmartGeneration ? 'Generate with AI' : 'Generate Enemy'}
+          </>
+        )}
       </button>
     </div>
   )

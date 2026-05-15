@@ -569,12 +569,6 @@ class DatabaseBackup:
         return hash_md5.hexdigest()
 
 
-class RestoreManager(DatabaseBackup):
-    """Restore orchestration entrypoint (same implementation as DatabaseBackup)."""
-
-    pass
-
-
 # Convenience functions for direct usage
 async def backup_all_databases(compress: bool = True, notes: Optional[str] = None) -> Dict[str, Any]:
     """Backup all databases - convenience function"""

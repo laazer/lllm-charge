@@ -25,6 +25,9 @@ const GodotDev = React.lazy(() => import('./pages/GodotDev'))
 const APIDev = React.lazy(() => import('./pages/APIDev'))
 const Buddies = React.lazy(() => import('./pages/Buddies'))
 const BlenderPipeline = React.lazy(() => import('./pages/BlenderPipeline'))
+const Tools = React.lazy(() => import('./pages/Tools'))
+const ToolExplorer = React.lazy(() => import('./pages/ToolExplorer'))
+const AgentRunner = React.lazy(() => import('./pages/AgentRunner'))
 
 // Loading component for Suspense fallback
 const PageLoadingSpinner = () => (
@@ -63,6 +66,9 @@ function AppContent() {
     '/godot': 'godot',
     '/buddies': 'buddies',
     '/blender': 'blender',
+    '/tools': 'tools',
+    '/tool-explorer': 'tool-explorer',
+    '/agent': 'agent',
   }
 
   const sectionToRoute = {
@@ -84,6 +90,9 @@ function AppContent() {
     'godot': '/godot',
     'buddies': '/buddies',
     'blender': '/blender',
+    'tools': '/tools',
+    'tool-explorer': '/tool-explorer',
+    'agent': '/agent',
   }
 
   // Update section when route changes
@@ -125,6 +134,9 @@ function AppContent() {
           <Route path="/godot" element={<GodotDev />} />
           <Route path="/buddies" element={<Buddies />} />
           <Route path="/blender" element={<BlenderPipeline />} />
+          <Route path="/tools" element={<Tools />} />
+          <Route path="/tool-explorer" element={<ToolExplorer />} />
+          <Route path="/agent" element={<AgentRunner />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>
@@ -141,9 +153,7 @@ function App() {
       }}
     >
       <ThemeProvider>
-        <WebSocketProvider
-          wsUrl={`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT ?? '3001'}`}
-        >
+        <WebSocketProvider wsUrl={`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:3001`}>
           <ProjectProvider>
             <AppContent />
           </ProjectProvider>

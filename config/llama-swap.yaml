@@ -1,0 +1,46 @@
+# Llama-Swap Configuration for LLM-Charge
+# Dynamic model management with complexity-based routing
+bind: "localhost:3333"
+
+groups:
+  lightweight:
+    models:
+      - name: "deepseek-r1-1.5b"
+        cmd: ["./llama-server", "--model", "models/deepseek-r1-1.5b.gguf", "--port", "8080"]
+        url: "http://localhost:8080"
+        healthPath: "/v1/models"
+    swap: true
+    exclusive: false
+    unloadAfter: "10m"
+    priority: 1
+
+  medium:
+    models:
+      - name: "llama-3.2-3b"
+        cmd: ["./llama-server", "--model", "models/llama-3.2-3b.gguf", "--port", "8081"]
+        url: "http://localhost:8081"
+        healthPath: "/v1/models"
+    swap: true
+    exclusive: true
+    unloadAfter: "15m"
+    priority: 2
+
+  heavy:
+    models:
+      - name: "llama-3.2-7b"
+        cmd: ["./llama-server", "--model", "models/llama-3.2-7b.gguf", "--port", "8082"]
+        url: "http://localhost:8082"
+        healthPath: "/v1/models"
+      - name: "codellama-13b"
+        cmd: ["./llama-server", "--model", "models/codellama-13b.gguf", "--port", "8083"]
+        url: "http://localhost:8083"
+        healthPath: "/v1/models"
+    persistent: true
+    exclusive: true
+    priority: 3
+
+routing:
+  strategy: "complexity-based"
+  fallback: "api"
+  healthCheckInterval: "30s"
+  swapTimeout: "60s"

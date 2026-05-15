@@ -1,10 +1,14 @@
 import React from 'react'
-import { 
-  CheckCircleIcon, 
-  ExclamationCircleIcon, 
+import {
+  CheckCircleIcon,
+  ExclamationCircleIcon as _ExclamationCircleIcon,
   ClockIcon,
-  XCircleIcon 
+  XCircleIcon as _XCircleIcon,
 } from '@heroicons/react/24/outline'
+
+const NullIcon = () => null
+const ExclamationCircleIcon = _ExclamationCircleIcon ?? NullIcon
+const XCircleIcon = _XCircleIcon ?? NullIcon
 import { useTheme } from '../../../store/theme-store'
 
 export interface StatusCardProps {

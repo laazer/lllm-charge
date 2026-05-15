@@ -6,8 +6,6 @@ import asyncio
 import sqlite3
 import json
 import logging
-import uuid
-from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -28,30 +26,6 @@ from app.database.models.schemas import (
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-def _parse_sqlite_datetime(val: Any) -> Any:
-    """Convert SQLite text datetimes to Python datetime for SQLAlchemy DateTime columns."""
-    if val is None or isinstance(val, datetime):
-        return val
-    if isinstance(val, str):
-        s = val.strip()
-        if not s:
-            return None
-        try:
-            return datetime.fromisoformat(s.replace("Z", "+00:00"))
-        except ValueError:
-            try:
-                return datetime.strptime(s[:19], "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                return val
-    return val
-
-
-def _coerce_datetimes(row: Dict[str, Any], keys: Tuple[str, ...]) -> None:
-    for k in keys:
-        if k in row:
-            row[k] = _parse_sqlite_datetime(row[k])
 
 
 class DataMigrator:
@@ -268,18 +242,6 @@ class DataMigrator:
                 projects_data = [dict(row) for row in cursor.fetchall()]
                 projects_data = self.clean_invalid_records(projects_data, ['id', 'name'])
                 
-                _project_cols = {
-                    "id",
-                    "name",
-                    "description",
-                    "key",
-                    "type",
-                    "lead",
-                    "agent_config",
-                    "codegraph_path",
-                    "created_at",
-                    "updated_at",
-                }
                 for project_data in projects_data:
                     try:
                         # Preserve ID format
@@ -290,9 +252,8 @@ class DataMigrator:
                             if isinstance(project_data['agent_config'], str):
                                 project_data['agent_config'] = json.loads(project_data['agent_config'])
                         
-                        row = {k: project_data[k] for k in _project_cols if k in project_data}
-                        _coerce_datetimes(row, ("created_at", "updated_at"))
-                        project = Project(**row)
+                        # Create project
+                        project = Project(**project_data)
                         session.add(project)
                         
                         self.migration_stats["projects"]["migrated"] += 1
@@ -306,22 +267,6 @@ class DataMigrator:
                 specs_data = [dict(row) for row in cursor.fetchall()]
                 specs_data = self.clean_invalid_records(specs_data, ['id', 'title'])
                 
-                _spec_cols = {
-                    "id",
-                    "title",
-                    "description",
-                    "status",
-                    "project_id",
-                    "assigned_agent",
-                    "priority",
-                    "tags",
-                    "linked_classes",
-                    "linked_methods",
-                    "linked_tests",
-                    "comments",
-                    "created_at",
-                    "updated_at",
-                }
                 for spec_data in specs_data:
                     try:
                         # Preserve ID format
@@ -334,9 +279,8 @@ class DataMigrator:
                                 if isinstance(spec_data[field], str):
                                     spec_data[field] = json.loads(spec_data[field])
                         
-                        row = {k: spec_data[k] for k in _spec_cols if k in spec_data}
-                        _coerce_datetimes(row, ("created_at", "updated_at"))
-                        spec = Specification(**row)
+                        # Create specification
+                        spec = Specification(**spec_data)
                         session.add(spec)
                         
                         self.migration_stats["specifications"]["migrated"] += 1
@@ -345,26 +289,11 @@ class DataMigrator:
                         logger.error(f"Error migrating specification {spec_data.get('id')}: {e}")
                         self.migration_stats["specifications"]["errors"] += 1
                 
-                # Migrate notes (optional in legacy Node DBs)
-                cursor.execute(
-                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='notes'"
-                )
-                if not cursor.fetchone():
-                    notes_data = []
-                else:
-                    cursor.execute("SELECT * FROM notes")
-                    notes_data = [dict(row) for row in cursor.fetchall()]
+                # Migrate notes
+                cursor.execute("SELECT * FROM notes")
+                notes_data = [dict(row) for row in cursor.fetchall()]
                 notes_data = self.clean_invalid_records(notes_data, ['id', 'title'])
                 
-                _note_cols = {
-                    "id",
-                    "title",
-                    "content",
-                    "tags",
-                    "project_id",
-                    "created_at",
-                    "updated_at",
-                }
                 for note_data in notes_data:
                     try:
                         # Preserve ID format
@@ -375,9 +304,8 @@ class DataMigrator:
                             if isinstance(note_data['tags'], str):
                                 note_data['tags'] = json.loads(note_data['tags'])
                         
-                        row = {k: note_data[k] for k in _note_cols if k in note_data}
-                        _coerce_datetimes(row, ("created_at", "updated_at"))
-                        note = Note(**row)
+                        # Create note
+                        note = Note(**note_data)
                         session.add(note)
                         
                         self.migration_stats["notes"]["migrated"] += 1
@@ -427,21 +355,6 @@ class DataMigrator:
                 agents_data = [dict(row) for row in cursor.fetchall()]
                 agents_data = self.clean_invalid_records(agents_data, ['id', 'name'])
                 
-                _agent_cols = {
-                    "id",
-                    "name",
-                    "description",
-                    "primary_role",
-                    "capabilities",
-                    "project_id",
-                    "last_active",
-                    "created_at",
-                    "updated_at",
-                    "status",
-                    "config",
-                    "security_policy",
-                    "constraints",
-                }
                 for agent_data in agents_data:
                     try:
                         # Preserve ID format
@@ -452,11 +365,8 @@ class DataMigrator:
                             if isinstance(agent_data['capabilities'], str):
                                 agent_data['capabilities'] = json.loads(agent_data['capabilities'])
                         
-                        row = {k: agent_data[k] for k in _agent_cols if k in agent_data}
-                        _coerce_datetimes(
-                            row, ("created_at", "updated_at", "last_active")
-                        )
-                        agent = Agent(**row)
+                        # Create agent
+                        agent = Agent(**agent_data)
                         session.add(agent)
                         
                         self.migration_stats["agents"]["migrated"] += 1
@@ -504,21 +414,6 @@ class DataMigrator:
                 flows_data = [dict(row) for row in cursor.fetchall()]
                 flows_data = self.clean_invalid_records(flows_data, ['id', 'name'])
                 
-                _flow_cols = {
-                    "id",
-                    "name",
-                    "description",
-                    "nodes",
-                    "edges",
-                    "type",
-                    "status",
-                    "category",
-                    "tags",
-                    "settings",
-                    "triggers",
-                    "created_at",
-                    "updated_at",
-                }
                 for flow_data in flows_data:
                     try:
                         # Preserve ID format
@@ -531,9 +426,8 @@ class DataMigrator:
                                 if isinstance(flow_data[field], str):
                                     flow_data[field] = json.loads(flow_data[field])
                         
-                        row = {k: flow_data[k] for k in _flow_cols if k in flow_data}
-                        _coerce_datetimes(row, ("created_at", "updated_at"))
-                        flow = Flow(**row)
+                        # Create flow
+                        flow = Flow(**flow_data)
                         session.add(flow)
                         
                         self.migration_stats["flows"]["migrated"] += 1
@@ -566,14 +460,8 @@ class DataMigrator:
         start_time = datetime.utcnow()
         
         try:
-            # Register all ORM tables on shared metadata
-            from app.database.database import Base  # noqa: WPS433
-
-            import app.database.models.main  # noqa: F401, WPS433
-            import app.database.models.agents  # noqa: F401, WPS433
-            import app.database.models.flows  # noqa: F401, WPS433
-            import app.database.models.metrics  # noqa: F401, WPS433
-
+            # Create target database tables
+            from app.database.models.main import Base
             async with self.engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
             
@@ -614,46 +502,6 @@ class DataMigrator:
                 "error": str(e),
                 "migration_stats": self.migration_stats
             }
-
-
-class MigrationRunner:
-    """Thin façade over DataMigrator for tests and tooling."""
-
-    async def run_full_migration(
-        self,
-        source_paths: Optional[Dict[str, str]] = None,
-        target_dir: Optional[str] = None,
-        **_: Any,
-    ) -> Dict[str, Any]:
-        sp = source_paths or {}
-        main_p = sp.get("main_db", "data/llm-charge.db")
-        agents_p = sp.get("agents_db", "data/agents.db")
-        flows_p = sp.get("flows_db", "data/flows.db")
-
-        if target_dir:
-            td = Path(target_dir).resolve()
-            td.mkdir(parents=True, exist_ok=True)
-            target_db = td / "migrated.db"
-            target_url = f"sqlite+aiosqlite:///{target_db}"
-        else:
-            target_url = "sqlite+aiosqlite:///./data/migrated-python.db"
-
-        migrator = DataMigrator(
-            main_db_path=main_p,
-            agents_db_path=agents_p,
-            flows_db_path=flows_p,
-            target_db_url=target_url,
-        )
-        out = await migrator.run_full_migration()
-        result = dict(out)
-        if result.get("success"):
-            counts = result.get("migrated_counts") or {}
-            result["total_migrated"] = sum(
-                int(v) for v in counts.values() if isinstance(v, (int, float))
-            )
-            result["migration_id"] = str(uuid.uuid4())
-        result.setdefault("errors", [])
-        return result
 
 
 async def main():

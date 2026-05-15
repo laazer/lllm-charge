@@ -116,19 +116,12 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': process.env.BACKEND_URL || 'http://localhost:3001',
-      '/mcp': process.env.BACKEND_URL || 'http://localhost:3001',
-      '/workflow-editor.html': process.env.BACKEND_URL || 'http://localhost:3001',
-      '/agent-studio.html': process.env.BACKEND_URL || 'http://localhost:3001',
+      '/api': process.env.BACKEND_URL || 'http://localhost:8000',
+      '/mcp': process.env.BACKEND_URL || 'http://localhost:8000',
+      '/ws': { target: process.env.BACKEND_URL || 'http://localhost:8000', ws: true },
     },
     hmr: {
       port: 3000,
-    },
-  },
-  preview: {
-    proxy: {
-      '/api': process.env.BACKEND_URL || 'http://localhost:3001',
-      '/mcp': process.env.BACKEND_URL || 'http://localhost:3001',
     },
   },
   define: {

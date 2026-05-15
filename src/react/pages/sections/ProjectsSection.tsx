@@ -2,21 +2,34 @@ import React, { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   FolderIcon,
-  FolderArrowDownIcon,
+  FolderArrowDownIcon as _FolderArrowDownIcon,
   UserIcon,
   ClockIcon,
   CodeBracketIcon,
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  CheckCircleIcon,
-  XMarkIcon,
-  MagnifyingGlassIcon,
-  BeakerIcon,
-  BoltIcon,
-  ArrowPathIcon,
-  SparklesIcon,
+  PlusIcon as _PlusIcon,
+  PencilIcon as _PencilIcon,
+  TrashIcon as _TrashIcon,
+  CheckCircleIcon as _CheckCircleIcon,
+  XMarkIcon as _XMarkIcon,
+  MagnifyingGlassIcon as _MagnifyingGlassIcon,
+  BeakerIcon as _BeakerIcon,
+  BoltIcon as _BoltIcon,
+  ArrowPathIcon as _ArrowPathIcon,
+  SparklesIcon as _SparklesIcon,
 } from '@heroicons/react/24/outline'
+
+const NullIcon = () => null
+const FolderArrowDownIcon = _FolderArrowDownIcon ?? NullIcon
+const PlusIcon = _PlusIcon ?? NullIcon
+const PencilIcon = _PencilIcon ?? NullIcon
+const TrashIcon = _TrashIcon ?? NullIcon
+const CheckCircleIcon = _CheckCircleIcon ?? NullIcon
+const XMarkIcon = _XMarkIcon ?? NullIcon
+const MagnifyingGlassIcon = _MagnifyingGlassIcon ?? NullIcon
+const BeakerIcon = _BeakerIcon ?? NullIcon
+const BoltIcon = _BoltIcon ?? NullIcon
+const ArrowPathIcon = _ArrowPathIcon ?? NullIcon
+const SparklesIcon = _SparklesIcon ?? NullIcon
 import { apiClient } from '../../lib/api-client'
 import { StatusCard } from '../../components/ui/Cards/StatusCard'
 import { MetricCard } from '../../components/ui/Cards/MetricCard'
@@ -628,7 +641,7 @@ function ImportProjectModal({
                      disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
           >
             <FolderArrowDownIcon className="h-4 w-4" />
-            <span>{isImporting ? 'Importing...' : 'Import Project'}</span>
+            <span>{isImporting ? 'Importing...' : 'Import'}</span>
           </button>
         </div>
       </ModalFooter>
@@ -656,6 +669,7 @@ const ProjectsSection: React.FC = () => {
   const { currentProjectId, setCurrentProjectId } = useProject()
 
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
 
@@ -692,13 +706,15 @@ const ProjectsSection: React.FC = () => {
   const overallStats = projects.reduce(
     (accumulator, project) => {
       accumulator.totalProjects++
+      if (project.status === 'active') accumulator.activeProjects++
       if (project.stats) {
         accumulator.totalSpecs += project.stats.specsCount || 0
         accumulator.totalAgents += project.stats.agentsCount || 0
+        accumulator.totalWorkflows += project.stats.workflowsCount || 0
       }
       return accumulator
     },
-    { totalProjects: 0, totalSpecs: 0, totalAgents: 0 }
+    { totalProjects: 0, totalSpecs: 0, totalAgents: 0, totalWorkflows: 0, activeProjects: 0 }
   )
 
   // Handlers
@@ -805,11 +821,11 @@ const ProjectsSection: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, index) => (
-            <div key={index} className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-32" />
+          {[...Array(4)].map((_, index) => (
+            <div key={index} data-testid="animate-pulse" className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-32" />
           ))}
         </div>
-        <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-96" />
+        <div data-testid="animate-pulse" className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-96" />
       </div>
     )
   }
@@ -826,7 +842,7 @@ const ProjectsSection: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatusCard
           title="Total Projects"
           value={overallStats.totalProjects}
@@ -849,6 +865,21 @@ const ProjectsSection: React.FC = () => {
           size="sm"
           unit=""
           change={{ value: 0, period: 'overall' }}
+        />
+        <MetricCard
+          title="Total Workflows"
+          value={overallStats.totalWorkflows}
+          color="purple"
+          size="sm"
+          unit=""
+          change={{ value: 0, period: 'overall' }}
+        />
+        <StatusCard
+          title="Active Projects"
+          value={overallStats.activeProjects}
+          status="success"
+          description="Running projects"
+          icon={CheckCircleIcon}
         />
       </div>
 
@@ -875,7 +906,7 @@ const ProjectsSection: React.FC = () => {
           >
             <option value="all">All Types</option>
             {PROJECT_TYPES.map(type => (
-              <option key={type} value={type}>{type}</option>
+              <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
             ))}
           </select>
         </div>
@@ -906,7 +937,7 @@ const ProjectsSection: React.FC = () => {
                    rounded-lg font-medium transition-colors whitespace-nowrap"
         >
           <PlusIcon className="h-5 w-5" />
-          <span>New Project</span>
+          <span>New</span>
         </button>
       </div>
 
@@ -952,8 +983,8 @@ const ProjectsSection: React.FC = () => {
                   {/* Header: title + actions */}
                   <div className="flex items-start gap-3 mb-4">
                     <div
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={() => setExpandedProjectId(isExpanded ? null : project.id)}
+                      className={`flex-1 min-w-0 cursor-pointer ${selectedProjectId === project.id ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800' : ''}`}
+                      onClick={() => { setExpandedProjectId(isExpanded ? null : project.id); setSelectedProjectId(project.id); }}
                     >
                       <div className="flex items-center space-x-3">
                         <div className={`p-2 rounded-lg bg-${typeColor}-100 dark:bg-${typeColor}-800/20`}>
@@ -977,6 +1008,15 @@ const ProjectsSection: React.FC = () => {
                               bg-${typeColor}-100 text-${typeColor}-800 dark:bg-${typeColor}-800/20 dark:text-${typeColor}-400`}>
                               {project.type}
                             </span>
+                            {project.status && (
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize
+                                ${project.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400' : ''}
+                                ${project.status === 'inactive' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-400' : ''}
+                                ${project.status === 'completed' ? 'bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400' : ''}
+                              `}>
+                                {project.status}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

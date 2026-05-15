@@ -94,8 +94,6 @@ strict_equality = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
-asyncio_mode = "auto"
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*", "*Tests"]
 python_functions = ["test_*"]

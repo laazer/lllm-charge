@@ -271,9 +271,9 @@ const SkillsSection: React.FC = () => {
 
   // Fetch skills (stored as specs with special tags)
   const { data: allSpecs = [], isLoading, error } = useQuery({
-    queryKey: ['skills', currentProjectId],
+    queryKey: ['skills'],
     queryFn: async () => {
-      const specs = await apiClient.getSpecs(currentProjectId)
+      const specs = await apiClient.getSpecs()
       return specs.filter(isSkillSpec)
     },
     refetchInterval: 30000,
@@ -294,7 +294,6 @@ const SkillsSection: React.FC = () => {
   const loadDefaultSkills = async () => {
     try {
       await apiClient.loadDefaultSkillsAndAgents({
-        projectId: currentProjectId,
         loadSkills: true,
         loadAgents: false,
         loadSpecs: false,
@@ -351,7 +350,7 @@ const SkillsSection: React.FC = () => {
   // Edit handler
   const handleSaveSkill = async (skillId: string, updates: Record<string, unknown>) => {
     await apiClient.updateSpec(skillId, updates)
-    await queryClient.invalidateQueries({ queryKey: ['skills', currentProjectId] })
+    await queryClient.invalidateQueries({ queryKey: ['skills'] })
   }
 
   // Delete handler
@@ -359,7 +358,7 @@ const SkillsSection: React.FC = () => {
     await apiClient.deleteSpec(skillId)
     selectedSkillIds.delete(skillId)
     setSelectedSkillIds(new Set(selectedSkillIds))
-    await queryClient.invalidateQueries({ queryKey: ['skills', currentProjectId] })
+    await queryClient.invalidateQueries({ queryKey: ['skills'] })
   }
 
   // Download selected skills to current project
@@ -382,8 +381,7 @@ const SkillsSection: React.FC = () => {
       )
       await Promise.all(createPromises)
       deselectAll()
-      await queryClient.invalidateQueries({ queryKey: ['skills', currentProjectId] })
-      await queryClient.invalidateQueries({ queryKey: ['specs', currentProjectId] })
+      await queryClient.invalidateQueries({ queryKey: ['skills'] })
     } catch (downloadError) {
       console.error('Failed to download skills to project:', downloadError)
     } finally {

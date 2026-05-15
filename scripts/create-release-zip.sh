@@ -79,9 +79,12 @@ zip -r "${ZIP_NAME}" . -x \
     "*.zip" \
     ".git/*" \
     ".claude/*" \
-    "test-*/\*" \
+    "test-*" \
     "test-*/*" \
+    "test-*/**" \
     "sample-projects/*" \
+    "backups/*" \
+    "venv/*" \
     "data/*.db" \
     "*.db" \
     "*.db.bak" \

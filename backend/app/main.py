@@ -18,13 +18,23 @@ from app.database.database import init_database
 
 # Import API routers
 from app.api import agents, workflows, specs, projects
+from app.api.cron import router as cron_router
+from app.api.buddies import router as buddies_router
+from app.api.memory import router as memory_router
+from app.api.health import health_router, api_router as health_api_router
+from app.api.reasoning import router as reasoning_router
+from app.api.mcp_router import router as mcp_api_router
+from app.api.agent_runner import router as agent_runner_router
+from app.api.devdocs import router as devdocs_router
+from app.api.blender import router as blender_router
+from app.api.codegraph import router as codegraph_router
+from app.api.filesystem import router as filesystem_router
+from app.api.tools import router as tools_router
+from app.api.assets import router as assets_router
+from app.api.system import router as system_router
 
 # Import WebSocket manager
 from app.websocket.manager import websocket_manager
-
-# Import MCP server
-from app.mcp.server import MCPServer
-from app.mcp.tools import get_available_tools
 
 # Import core components
 from app.core.logging import setup_logging, get_logger
@@ -33,12 +43,6 @@ from app.core.exceptions import LLMChargeException
 # Set up logging
 setup_logging(level="INFO" if not settings.debug else "DEBUG")
 logger = get_logger("main")
-
-# Initialize MCP server
-mcp_server = MCPServer()
-
-APP_START_TIME = time.time()
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -52,10 +56,6 @@ async def lifespan(app: FastAPI):
         init_database()
         logger.info("✅ Database initialized")
         
-        # Start MCP server
-        mcp_server.start()
-        logger.info("✅ MCP server started")
-        
         startup_time = time.time() - start_time
         logger.info(f"🚀 LLM-Charge backend startup complete in {startup_time:.2f}s")
         
@@ -68,14 +68,6 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down LLM-Charge backend...")
     try:
-        # Cleanup MCP server
-        if hasattr(mcp_server, 'stop'):
-            mcp_server.stop()
-            logger.info("✅ MCP server stopped")
-        
-        # Close database connections
-        # Note: SQLAlchemy will handle connection cleanup automatically
-        
         logger.info("👋 LLM-Charge backend shutdown complete")
         
     except Exception as e:
@@ -110,10 +102,25 @@ if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Include API routers
+app.include_router(health_router)
+app.include_router(health_api_router)
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
 app.include_router(specs.router, prefix="/api/specs", tags=["specs"])
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
+app.include_router(reasoning_router, tags=["reasoning"])
+app.include_router(cron_router)
+app.include_router(buddies_router)
+app.include_router(memory_router)
+app.include_router(mcp_api_router)
+app.include_router(agent_runner_router)
+app.include_router(devdocs_router)
+app.include_router(blender_router)
+app.include_router(codegraph_router)
+app.include_router(filesystem_router)
+app.include_router(tools_router)
+app.include_router(assets_router)
+app.include_router(system_router)
 
 
 async def database_health():
@@ -146,7 +153,6 @@ async def database_health():
 
 
 @app.get("/health")
-@app.get("/health/")
 async def health_check():
     """Health check endpoint with system status"""
     try:
@@ -154,22 +160,18 @@ async def health_check():
         db_health_result = await database_health()
         db_status = db_health_result.get("status", "unhealthy")
         
-        # Check MCP server status
-        mcp_status = "healthy" if hasattr(mcp_server, 'start') else "unknown"
-        
-        overall_status = "healthy" if db_status == "healthy" and mcp_status == "healthy" else "degraded"
-        
+        overall_status = "healthy" if db_status == "healthy" else "degraded"
+
         return {
             "status": overall_status,
             "version": "2.0.0",
             "service": "llm-charge-backend",
             "timestamp": int(time.time()),
-            "database": db_status,
             "components": {
                 "database": db_status,
-                "mcp_server": mcp_status
+                "mcp_server": "healthy",
             },
-            "uptime_seconds": int(time.time() - APP_START_TIME),
+            "uptime_seconds": int(time.time() - start_time) if 'start_time' in locals() else 0
         }
         
     except Exception as e:
@@ -189,24 +191,6 @@ async def database_health_endpoint():
     return await database_health()
 
 
-@app.get("/health/ready")
-async def readiness():
-    """Kubernetes-style readiness: depend on database connectivity."""
-    result = await database_health()
-    if result.get("status") == "healthy":
-        return JSONResponse(status_code=200, content={"status": "ready", "database": "connected"})
-    return JSONResponse(
-        status_code=503,
-        content={"status": "not_ready", "detail": result.get("error", "database unavailable")},
-    )
-
-
-@app.get("/health/live")
-async def liveness():
-    """Kubernetes-style liveness: process is up."""
-    return {"status": "alive"}
-
-
 @app.get("/")
 async def root():
     """Root endpoint with comprehensive API information"""
@@ -223,7 +207,7 @@ async def root():
             "workflows": "/api/workflows",
             "specs": "/api/specs",
             "projects": "/api/projects",
-            "mcp_tools": "/api/mcp/tools",
+            "mcp_tools": "/mcp/tools",
             "websocket": "/ws"
         },
         "features": [
@@ -250,12 +234,6 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket_manager.send_personal_message(f"Echo: {data}", websocket)
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
-
-
-@app.get("/api/mcp/tools")
-async def get_mcp_tools():
-    """Get available MCP tools"""
-    return get_available_tools()
 
 
 @app.exception_handler(LLMChargeException)

@@ -11,20 +11,11 @@ import type {
   BuddyMessage
 } from '../types'
 
-/** Same-origin `/api` when using Vite proxy; override with `VITE_API_BASE` for non-proxied hosts. */
-function defaultApiBaseUrl(): string {
-  const v = import.meta.env?.VITE_API_BASE
-  if (typeof v === 'string' && v.trim() !== '') {
-    return v.replace(/\/+$/, '')
-  }
-  return '/api'
-}
-
 class ApiClient {
   private baseUrl: string
   private headers: Record<string, string>
 
-  constructor(baseUrl = defaultApiBaseUrl()) {
+  constructor(baseUrl = 'http://localhost:3001/api') {
     this.baseUrl = baseUrl
     this.headers = {
       'Content-Type': 'application/json',
@@ -405,14 +396,9 @@ class ApiClient {
     return this.request<CodeGraphImpact>(`/codegraph/impact/${encodeURIComponent(id)}${params}`)
   }
 
-  /** `/mcp/*` is not under `/api`; strip trailing `/api` so `/api` becomes same-origin root. */
-  private mcpBasePrefix(): string {
-    return this.baseUrl.replace(/\/api\/?$/, '')
-  }
-
   // MCP API - these endpoints are served directly at /mcp/* without /api prefix
   async getMCPStatus(): Promise<any> {
-    const url = `${this.mcpBasePrefix()}/mcp/status`
+    const url = `${this.baseUrl.replace('/api', '')}/mcp/status`
     const response = await fetch(url, {
       headers: { ...this.headers },
     })
@@ -423,7 +409,7 @@ class ApiClient {
   }
 
   async getMCPTools(): Promise<{ tools: any[]; summary: any }> {
-    const url = `${this.mcpBasePrefix()}/mcp/tools`
+    const url = `${this.baseUrl.replace('/api', '')}/mcp/tools`
     const response = await fetch(url, {
       headers: { ...this.headers },
     })
@@ -434,7 +420,7 @@ class ApiClient {
   }
 
   async getMCPResources(): Promise<{ resources: any[]; summary: any }> {
-    const url = `${this.mcpBasePrefix()}/mcp/resources`
+    const url = `${this.baseUrl.replace('/api', '')}/mcp/resources`
     const response = await fetch(url, {
       headers: { ...this.headers },
     })
@@ -445,7 +431,26 @@ class ApiClient {
   }
 
   async callMCPTool(toolName: string, params: any = {}): Promise<any> {
-    const url = `${this.mcpBasePrefix()}/mcp/call/${toolName}`
+    const url = `${this.baseUrl.replace('/api', '')}/mcp/call/${toolName}`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { ...this.headers },
+      body: JSON.stringify(params),
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    return await response.json()
+  }
+
+  async runMCPAgent(params: {
+    goal: string
+    allowedTools?: string[]
+    maxSteps?: number
+    preferLocal?: boolean
+    complexity?: string
+  }): Promise<any> {
+    const url = `${this.baseUrl.replace('/api', '')}/mcp/agent/run`
     const response = await fetch(url, {
       method: 'POST',
       headers: { ...this.headers },

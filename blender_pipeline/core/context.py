@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from blender_pipeline.core.config import BlenderConfig
+from blender_pipeline.core.dependency_validator import validate_dependencies, log_dependency_status
 
 try:
     import bpy
@@ -23,9 +24,35 @@ logger = logging.getLogger(__name__)
 class BlenderContext:
     """Manages Blender scene state with context manager support."""
 
-    def __init__(self, config: Optional[BlenderConfig] = None) -> None:
+    def __init__(self, config: Optional[BlenderConfig] = None, validate_deps: bool = True) -> None:
         self.config = config or BlenderConfig()
         self._saved_state: Optional[str] = None
+        
+        # Validate dependencies on first initialization
+        if validate_deps:
+            self._validate_system_dependencies()
+
+    def _validate_system_dependencies(self) -> None:
+        """Validate system dependencies and log warnings."""
+        try:
+            report = validate_dependencies()
+            
+            if not report.is_functional:
+                logger.error(
+                    "Blender Pipeline is not fully functional. "
+                    "Critical dependencies are missing."
+                )
+                log_dependency_status()
+            elif not report.is_fully_functional:
+                logger.warning(
+                    "Some optional Blender Pipeline features are disabled due to missing dependencies."
+                )
+                if logger.isEnabledFor(logging.DEBUG):
+                    log_dependency_status()
+            else:
+                logger.info("All Blender Pipeline dependencies available.")
+        except Exception as e:
+            logger.warning(f"Failed to validate dependencies: {e}")
 
     def __enter__(self) -> BlenderContext:
         if HAS_BPY:

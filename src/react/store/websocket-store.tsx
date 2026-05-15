@@ -30,7 +30,7 @@ export function WebSocketProvider({
   maxReconnectAttempts = 5 
 }: WebSocketProviderProps) {
   const [isConnected, setIsConnected] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected')
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting')
   const [metrics, setMetrics] = useState<MetricsData | null>(null)
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null)
   const [lastMessageTime, setLastMessageTime] = useState<number | null>(null)
@@ -79,7 +79,7 @@ export function WebSocketProvider({
               console.error('WebSocket error message:', message.data)
               break
             default:
-              // Silently handle unknown message types to reduce console noise
+              console.log('Unknown WebSocket message type:', message.type)
               break
           }
         } catch (error) {
@@ -133,10 +133,9 @@ export function WebSocketProvider({
     }
 
     setIsReconnecting(true)
-    // Exponential backoff with jitter to prevent thundering herd
+    // Exponential backoff
     const baseDelay = reconnectInterval * Math.pow(1.5, reconnectAttempts.current)
-    const jitter = Math.random() * 1000 // Add 0-1s jitter
-    const delay = Math.min(baseDelay + jitter, 30000)
+    const delay = Math.min(baseDelay, 30000)
     
     console.log(`WebSocket scheduling reconnect attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts} in ${Math.round(delay)}ms`)
     
@@ -177,21 +176,14 @@ export function WebSocketProvider({
     reconnectAttempts.current = 0
     shouldReconnect.current = true
     disconnect()
-    setTimeout(connect, 100)
+    connect()
   }
 
   useEffect(() => {
     shouldReconnect.current = true
-    
-    // Add a small delay for initial connection to prevent rapid reconnection
-    const initialConnectTimer = setTimeout(() => {
-      if (shouldReconnect.current) {
-        connect()
-      }
-    }, 100)
+    connect()
 
     return () => {
-      clearTimeout(initialConnectTimer)
       disconnect()
     }
   }, [wsUrl])
@@ -230,7 +222,7 @@ export function WebSocketProvider({
 }
 
 // Export as const to make Fast Refresh happy
-export const useWebSocket = () => {
+export const useWebSocket = (): WebSocketContextType => {
   const context = useContext(WebSocketContext)
   if (context === undefined) {
     throw new Error('useWebSocket must be used within a WebSocketProvider')

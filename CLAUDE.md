@@ -1,5 +1,22 @@
 # CLAUDE.md - LLM-Charge Developer Instructions
 
+## ⚠️ Architecture Rule: Python-Only Backend
+
+**THE BACKEND IS PYTHON (FastAPI). DO NOT WRITE TYPESCRIPT FOR THE BACKEND.**
+
+- Backend lives in `backend/` — FastAPI, Python 3.11+, uvicorn
+- Frontend lives in `src/react/` — React 19, TypeScript, Vite
+- `src/` contains ONLY the React frontend (`src/react/`) and Blender pipeline (`src/blender_pipeline/`)
+- If you find yourself writing a `.ts` server file or `.mjs` server file, STOP
+- New API endpoints go in `backend/app/api/`
+- New background tasks go in `backend/app/` as Python modules
+
+Starting the system:
+  Terminal 1: `cd backend && venv/bin/python -m uvicorn app.main:app --port 8000 --reload`
+  Terminal 2: `npm run dev`  (starts Vite on port 3000, proxies /api → :8000)
+
+Or use: `npm run dev:full` to start both together.
+
 ## Project Overview
 
 LLM-Charge is a comprehensive platform that supercharges local LLMs through intelligent hybrid routing, cost optimization, and advanced automation. Built by combining the best features from 7 open-source projects, it provides a unified solution for reducing API costs by 60-80% while maintaining high-quality AI interactions.
@@ -74,7 +91,7 @@ src/
 2. **Modularity**: Each component is self-contained with clear interfaces
 3. **Security**: Sandboxed execution, security policies, input validation
 4. **Performance**: Caching, connection pooling, circuit breakers
-5. **Testing**: 85-90% test coverage with unit, integration, and visual tests
+5. **Testing**: Comprehensive test suite (current coverage: ~0%, target: 85%)
 6. **Documentation**: Comprehensive inline documentation and README
 
 ### Technology Stack
@@ -95,7 +112,7 @@ The project includes 20 comprehensive test files:
 
 ```
 tests/
-├── unit/                           # Unit tests (85% coverage)
+├── unit/                           # Unit tests (target: 85% coverage)
 │   ├── agents/                     # Agent system tests
 │   ├── dashboard/                  # Dashboard component tests
 │   ├── intelligence/               # Multi-modal AI tests
@@ -104,7 +121,7 @@ tests/
 │   ├── ui/                        # Visual component tests
 │   ├── external-dependencies.test.ts  # External service mocking
 │   └── types-validation.test.ts    # TypeScript type validation
-├── integration/                    # Integration tests (70% coverage)
+├── integration/                    # Integration tests (target: 70% coverage)
 │   ├── end-to-end.test.ts         # Full system integration
 │   ├── expanded-commands.test.ts   # Command recognition tests
 │   └── mcp-server.test.ts         # MCP protocol tests
@@ -461,7 +478,7 @@ services:
 ### Pull Request Requirements
 
 - [ ] All tests pass (`npm test`)
-- [ ] Code coverage remains above 85%
+- [ ] Code coverage improves toward 85% target
 - [ ] No TypeScript errors (`npm run typecheck`)
 - [ ] Code is properly formatted (`npm run format`)
 - [ ] Documentation is updated if needed
@@ -594,13 +611,40 @@ We welcome feature requests! Please:
 
 ---
 
+## Implementation Status
+
+### ✅ Fully Implemented
+- Hybrid reasoning with local/cloud routing
+- DevDocs integration for offline documentation  
+- Basic workflow engine and agent management
+- Real-time dashboard with WebSocket communication
+- Cost tracking and optimization features
+- Independent database architecture
+
+### 🔄 In Active Development
+- Complete multi-modal intelligence system
+- Advanced agent security sandboxing
+- Memory graph with semantic clustering
+- Performance optimization and benchmarking
+- Comprehensive test suite completion
+
+### 📋 Planned Features  
+- Advanced model fine-tuning recommendations
+- Multi-project workspace support
+- Plugin system for custom intelligence modules
+- Enterprise deployment features
+
+*This status is updated regularly to reflect current development progress.*
+
+---
+
 ## 🎯 Development Roadmap
 
 ### Current Focus (Phase 1) ✅
 - [x] Unified platform combining 7 open-source projects
 - [x] Multi-provider local LLM support
 - [x] Cost optimization with 60-80% savings
-- [x] Comprehensive test coverage (85-90%)
+- [ ] Comprehensive test coverage (current: ~0%, target: 85%)
 - [x] Real-time dashboard and monitoring
 
 ### Next Phase (Q2 2025) 🔄

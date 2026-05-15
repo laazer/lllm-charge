@@ -4,8 +4,7 @@ Specification database models
 from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
-from app.database.base import Base
-from app.database.mixins import BaseModel, TimestampMixin
+from .base import Base, BaseModel, TimestampMixin
 from enum import Enum
 
 
@@ -24,7 +23,7 @@ class SpecPriority(str, Enum):
     CRITICAL = "critical"
 
 
-class Spec(Base, BaseModel, TimestampMixin):
+class Spec(BaseModel):
     """Specification model"""
     __tablename__ = "specs"
     

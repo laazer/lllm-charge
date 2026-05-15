@@ -4,8 +4,7 @@ Project database models
 from sqlalchemy import Column, String, Text, JSON, ForeignKey, DateTime, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
-from app.database.base import Base
-from app.database.mixins import BaseModel, TimestampMixin
+from .base import Base, BaseModel, TimestampMixin
 from enum import Enum
 
 
@@ -23,10 +22,11 @@ class ProjectType(str, Enum):
     INFRASTRUCTURE = "infrastructure"
 
 
-class Project(Base, BaseModel, TimestampMixin):
+class Project(Base):
     """Project model"""
     __tablename__ = "projects"
     
+    id = Column(String, primary_key=True)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text)
     key = Column(String(50), unique=True, index=True)
@@ -35,8 +35,12 @@ class Project(Base, BaseModel, TimestampMixin):
     lead = Column(String(255))
     
     # Configuration and metadata
-    config = Column(SQLiteJSON, default=dict)
-    metadata = Column(SQLiteJSON, default=dict)
+    config = Column(JSON, default=dict)
+    project_metadata = Column(JSON, default=dict)
+    
+    # Timestamps
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
     
     # Relationships
     specs = relationship("Spec", back_populates="project", cascade="all, delete-orphan")

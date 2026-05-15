@@ -1,9 +1,14 @@
 import React from 'react'
-import { 
-  ArrowUpIcon, 
-  ArrowDownIcon,
-  MinusIcon 
+import {
+  ArrowUpIcon as _ArrowUpIcon,
+  ArrowDownIcon as _ArrowDownIcon,
+  MinusIcon as _MinusIcon,
 } from '@heroicons/react/24/outline'
+
+const NullIcon = () => null
+const ArrowUpIcon = _ArrowUpIcon ?? NullIcon
+const ArrowDownIcon = _ArrowDownIcon ?? NullIcon
+const MinusIcon = _MinusIcon ?? NullIcon
 import { useTheme } from '../../../store/theme-store'
 
 export interface MetricCardProps {
@@ -171,7 +176,7 @@ export const MetricCard = React.memo(function MetricCard({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           {/* Title */}
-          <div className="flex items-center space-x-2 mb-2">
+          <div className="flex items-center space-x-2 mb-2 text-gray-700 dark:text-gray-300">
             {Icon && (
               <Icon className={`${sizeScheme.iconSize} ${colorScheme.icon}`} />
             )}

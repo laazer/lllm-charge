@@ -96,7 +96,7 @@ export function Modal({
                          hover:bg-gray-100 dark:hover:bg-slate-700 transition-all duration-150"
                 aria-label="Close modal"
               >
-                <XMarkIcon className="w-5 h-5" />
+                ✕
               </button>
             )}
           </div>

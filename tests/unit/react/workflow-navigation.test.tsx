@@ -5,7 +5,6 @@ import { MemoryRouter } from 'react-router-dom'
 import Workflows from '../../../src/react/pages/Workflows'
 import { apiClient } from '../../../src/react/lib/api-client'
 import { ThemeProvider } from '../../../src/react/store/theme-store'
-import { ProjectProvider } from '../../../src/react/store/project-store'
 
 // Mock the API client
 jest.mock('../../../src/react/lib/api-client', () => ({
@@ -74,11 +73,9 @@ describe('Workflow Builder Navigation', () => {
     return render(
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <ProjectProvider>
-            <MemoryRouter>
-              <Workflows />
-            </MemoryRouter>
-          </ProjectProvider>
+          <MemoryRouter>
+            <Workflows />
+          </MemoryRouter>
         </QueryClientProvider>
       </ThemeProvider>
     )
@@ -231,8 +228,7 @@ describe('Workflow Builder Navigation', () => {
           title: expect.stringMatching(/^Workflow \d+$/),
           description: 'A new n8n-style automation workflow',
           status: 'draft',
-          priority: 'medium',
-          projectId: 'main-1773934155652'
+          priority: 'medium'
         })
       })
     })

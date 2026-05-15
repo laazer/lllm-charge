@@ -51,7 +51,7 @@ services:
   llm-charge-frontend:
     build:
       context: ../
-      dockerfile: Dockerfile.production
+      dockerfile: ./src/react/Dockerfile.production
     container_name: llm-charge-frontend
     ports:
       - "${FRONTEND_PORT:-3000}:3000"

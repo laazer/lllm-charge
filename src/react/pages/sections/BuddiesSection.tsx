@@ -11,7 +11,6 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline'
 import { apiClient } from '../../lib/api-client'
-import { useProject } from '../../store/project-store'
 import type {
   Buddy,
   BuddyMessage,
@@ -74,7 +73,6 @@ const DEFAULT_FORM: BuddyFormData = {
 type ViewMode = 'gallery' | 'config' | 'chat'
 
 const BuddiesSection: React.FC = () => {
-  const { currentProjectId } = useProject()
   const [viewMode, setViewMode] = useState<ViewMode>('gallery')
   const [selectedBuddy, setSelectedBuddy] = useState<Buddy | null>(null)
   const [editingBuddy, setEditingBuddy] = useState<Buddy | null>(null)
@@ -85,8 +83,8 @@ const BuddiesSection: React.FC = () => {
   const queryClient = useQueryClient()
 
   const { data: buddies = [], isLoading, error } = useQuery({
-    queryKey: ['buddies', currentProjectId],
-    queryFn: () => apiClient.getBuddies(currentProjectId),
+    queryKey: ['buddies'],
+    queryFn: () => apiClient.getBuddies(),
   })
 
   const { data: messages = [], refetch: refetchMessages } = useQuery({
@@ -105,10 +103,9 @@ const BuddiesSection: React.FC = () => {
       communicationStyle: data.communicationStyle,
       customSystemPrompt: data.customSystemPrompt || undefined,
       contextWindowSize: data.contextWindowSize,
-      projectId: currentProjectId,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['buddies', currentProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['buddies'] })
       setViewMode('gallery')
       setFormData(DEFAULT_FORM)
       setEditingBuddy(null)
@@ -128,7 +125,7 @@ const BuddiesSection: React.FC = () => {
         contextWindowSize: data.contextWindowSize,
       }),
     onSuccess: (updatedBuddy) => {
-      queryClient.invalidateQueries({ queryKey: ['buddies', currentProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['buddies'] })
       setSelectedBuddy(updatedBuddy)
       setViewMode('gallery')
       setEditingBuddy(null)
@@ -139,7 +136,7 @@ const BuddiesSection: React.FC = () => {
   const deleteBuddyMutation = useMutation({
     mutationFn: (id: string) => apiClient.deleteBuddy(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['buddies', currentProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['buddies'] })
       setSelectedBuddy(null)
       setViewMode('gallery')
     },
@@ -158,7 +155,7 @@ const BuddiesSection: React.FC = () => {
     mutationFn: (buddyId: string) => apiClient.clearBuddyMessages(buddyId),
     onSuccess: () => {
       refetchMessages()
-      queryClient.invalidateQueries({ queryKey: ['buddies', currentProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['buddies'] })
     },
   })
 

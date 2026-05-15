@@ -2,33 +2,29 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true,
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "outDir": "dist",
-    "rootDir": ".",
     "resolveJsonModule": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "types": ["node", "jest"],
+    "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/core/*": ["src/core/*"],
-      "@/intelligence/*": ["src/intelligence/*"], 
-      "@/reasoning/*": ["src/reasoning/*"],
-      "@/mcp/*": ["src/mcp/*"],
-      "@/utils/*": ["src/utils/*"]
+      "@/*": ["src/react/*"],
+      "@/components/*": ["src/react/components/*"],
+      "@/hooks/*": ["src/react/hooks/*"],
+      "@/store/*": ["src/react/store/*"],
+      "@/utils/*": ["src/react/utils/*"],
+      "@/types/*": ["src/react/types/*"],
+      "@/api/*": ["src/react/api/*"]
     }
   },
   "include": [
-    "src/**/*",
-    "tests/**/*"
+    "src/react/**/*",
+    "tests/unit/react/**/*"
   ],
   "exclude": [
     "node_modules",

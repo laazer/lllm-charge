@@ -1,7 +1,6 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useWebSocket } from '../store/websocket-store'
-import { useProject } from '../store/project-store'
 import { apiClient } from '../lib/api-client'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { StatusCard } from '../components/ui/Cards/StatusCard'
@@ -19,10 +18,9 @@ import {
 } from '@heroicons/react/24/outline'
 
 function ActiveSpecsList() {
-  const { currentProjectId } = useProject()
   const { data: specs = [], isLoading } = useQuery({
-    queryKey: ['specs', currentProjectId],
-    queryFn: () => apiClient.getSpecs(currentProjectId),
+    queryKey: ['specs', 'main-1773934155652'],
+    queryFn: () => apiClient.getSpecs('main-1773934155652'),
     refetchInterval: 30000, // Refresh every 30 seconds
   })
 
@@ -93,21 +91,20 @@ function ActiveSpecsList() {
 
 const Dashboard: React.FC = () => {
   const { metrics, isConnected } = useWebSocket()
-  const { currentProjectId } = useProject()
-
+  
   const { data: projects, isLoading: projectsLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: () => apiClient.getProjects(),
   })
 
   const { data: agents, isLoading: agentsLoading } = useQuery({
-    queryKey: ['agents', currentProjectId],
-    queryFn: () => apiClient.getAgents(currentProjectId),
+    queryKey: ['agents'],
+    queryFn: () => apiClient.getAgents(),
   })
 
   const { data: specs, isLoading: specsLoading } = useQuery({
-    queryKey: ['specs', currentProjectId],
-    queryFn: () => apiClient.getSpecs(currentProjectId),
+    queryKey: ['specs'],
+    queryFn: () => apiClient.getSpecs(),
   })
 
   if (projectsLoading || agentsLoading || specsLoading) {
@@ -144,21 +141,21 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         <StatusCard
           title="Projects"
-          value={projects?.length || 0}
+          value={projects !== undefined ? projects.length : 0}
           status="info"
           description="Active projects in workspace"
           icon={FolderIcon}
         />
         <StatusCard
           title="Agents"
-          value={agents?.length || 0}
+          value={agents !== undefined ? agents.length : '-'}
           status="success"
           description="AI agents deployed"
           icon={UserGroupIcon}
         />
         <StatusCard
           title="Specifications"
-          value={specs?.length || 0}
+          value={specs !== undefined ? specs.length : '-'}
           status="info"
           description="Documentation specs"
           icon={DocumentTextIcon}
@@ -171,47 +168,11 @@ const Dashboard: React.FC = () => {
           icon={Cog8ToothIcon}
         />
         <StatusCard
-          title="WebSocket"
-          value={isConnected ? 'Connected' : 'Disconnected'}
-          status={isConnected ? 'success' : 'error'}
+          title="Connection"
+          value={isConnected ? 'Active' : 'Inactive'}
+          status={isConnected ? 'success' : 'warning'}
           description="Real-time connection status"
           icon={WifiIcon}
-        />
-      </div>
-
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <MetricCard
-          title="Total Requests"
-          value={totalRequests.toLocaleString()}
-          icon={ChartBarIcon}
-          color="blue"
-        />
-        <MetricCard
-          title="Success Rate"
-          value={`${parseFloat(successRate).toFixed(1)}`}
-          unit="%"
-          icon={BoltIcon}
-          color="green"
-        />
-        <MetricCard
-          title="Avg Response Time"
-          value={avgResponseTime.toFixed(0)}
-          unit="ms"
-          icon={ClockIcon}
-          color="yellow"
-        />
-        <MetricCard
-          title="Cron Executions"
-          value={cronSystem.recentExecutions || 0}
-          icon={Cog8ToothIcon}
-          color="gray"
-        />
-        <MetricCard
-          title="Cost Savings"
-          value={`$${totalSavings.toFixed(2)}`}
-          icon={ChartBarIcon}
-          color="purple"
         />
       </div>
 
@@ -238,7 +199,7 @@ const Dashboard: React.FC = () => {
                   Success Rate
                 </p>
                 <p className="text-xl font-semibold text-green-600">
-                  {metrics.successRate ? `${parseFloat(metrics.successRate).toFixed(1)}%` : '0%'}
+                  {metrics.successRate ? `${(parseFloat(String(metrics.successRate)) * 100).toFixed(1)}%` : '0%'}
                 </p>
               </div>
               <div>
@@ -263,6 +224,39 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="p-6">
           <ActiveSpecsList />
+        </div>
+      </div>
+
+      {/* React Migration Progress */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            React Migration Progress
+          </h2>
+        </div>
+        <div className="p-6">
+          <div className="space-y-4">
+            {[
+              { phase: 'Phase 1: React Project Setup & Architecture', status: 'Completed' },
+              { phase: 'Phase 2: Core Component Library & Dashboard', status: 'In Progress' },
+              { phase: 'Phase 3: State Management & Data Integration', status: 'Pending' },
+              { phase: 'Phase 4: Comprehensive Testing Framework', status: 'Pending' },
+              { phase: 'Phase 5: Performance Optimization & Production', status: 'Pending' },
+            ].map(({ phase, status }) => (
+              <div key={phase} className="flex items-center justify-between">
+                <span className="text-sm text-gray-700 dark:text-gray-300">{phase}</span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  status === 'Completed'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400'
+                    : status === 'In Progress'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400'
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                }`}>
+                  {status}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

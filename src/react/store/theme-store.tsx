@@ -127,10 +127,17 @@ export function ThemeProvider({
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 
-export function useTheme() {
+const defaultThemeContext: ThemeContextType = {
+  theme: 'light',
+  style: 'glass',
+  toggleTheme: () => {},
+  toggleStyle: () => {},
+  setTheme: () => {},
+  setStyle: () => {},
+  setThemeConfig: () => {},
+}
+
+export function useTheme(): ThemeContextType {
   const context = useContext(ThemeContext)
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
-  return context
+  return context ?? defaultThemeContext
 }

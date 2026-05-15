@@ -4,7 +4,7 @@ SQLAlchemy models for main entities (projects, specs)
 from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database.database import Base
+from .base import Base
 
 
 class Project(Base):
@@ -83,19 +83,3 @@ class Note(Base):
     
     def __repr__(self):
         return f"<Note(id='{self.id}', title='{self.title}')>"
-
-
-class Checkpoint(Base):
-    """Agent / workflow checkpoint for memory and recovery (aligned with Node-era schema)."""
-
-    __tablename__ = "checkpoints"
-
-    id = Column(String, primary_key=True)
-    project_id = Column(String, ForeignKey("projects.id"), nullable=True)
-    label = Column(String(255), nullable=True)
-    payload = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-
-    def __repr__(self):
-        return f"<Checkpoint(id='{self.id}', project_id='{self.project_id}')>"

@@ -4,8 +4,7 @@ Workflow database models
 from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Integer, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
-from app.database.base import Base
-from app.database.mixins import BaseModel, TimestampMixin
+from .base import Base, BaseModel, TimestampMixin
 from enum import Enum
 
 
@@ -25,7 +24,7 @@ class WorkflowType(str, Enum):
     EVENT_DRIVEN = "event_driven"
 
 
-class Workflow(Base, BaseModel, TimestampMixin):
+class Workflow(BaseModel):
     """Workflow model"""
     __tablename__ = "workflows"
     
@@ -63,7 +62,7 @@ class Workflow(Base, BaseModel, TimestampMixin):
         return f"<Workflow(id={self.id}, name={self.name}, status={self.status})>"
 
 
-class WorkflowExecution(Base, BaseModel, TimestampMixin):
+class WorkflowExecution(BaseModel):
     """Workflow execution history"""
     __tablename__ = "workflow_executions"
     

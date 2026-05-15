@@ -1,12 +1,10 @@
 """
 SQLAlchemy models for agent management
 """
-import uuid
-
 from sqlalchemy import Column, String, Text, JSON, Enum as SQLEnum, Integer, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database.database import Base
+from .base import Base
 import enum
 
 
@@ -35,16 +33,19 @@ class AgentRole(enum.Enum):
 
 class Agent(Base):
     """Agent model for AI agents in the system"""
-    
+
     __tablename__ = "agents"
-    
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     description = Column(Text)
     primary_role = Column(String)
-    status = Column(String, nullable=False, default=AgentStatus.ACTIVE.value)
+    status = Column(String, default="active")  # active, inactive, training, deployed, error
     capabilities = Column(JSON)  # reasoning, creativity, technical, communication
-    config = Column(JSON, default=dict)
+    config = Column(JSON)  # agent configuration
+    task_count = Column(Integer, default=0)
+    success_rate = Column(Float, default=0.0)
+    avg_response_time = Column(Float, default=0.0)
     project_id = Column(String, nullable=True)  # null = independent agent
     security_policy = Column(JSON)
     constraints = Column(JSON)

@@ -30,13 +30,13 @@ async def get_agents(
         # Build query
         query = db.query(Agent)
         
-        # Apply filters
+        # Apply filters — extract .value from enums for SQLite string columns
         if role:
-            rv = role.value if hasattr(role, "value") else str(role)
-            query = query.filter(Agent.primary_role == rv)
+            role_value = role.value if hasattr(role, 'value') else role
+            query = query.filter(Agent.primary_role == role_value)
         if status:
-            sv = status.value if hasattr(status, "value") else str(status)
-            query = query.filter(Agent.status == sv)
+            status_value = status.value if hasattr(status, 'value') else status
+            query = query.filter(Agent.status == status_value)
         if search:
             search_term = f"%{search}%"
             query = query.filter(
@@ -127,13 +127,12 @@ async def create_agent(agent_data: AgentCreate, db: Session = Depends(get_db)):
                 detail=f"Agent with name '{agent_data.name}' already exists"
             )
         
-        # Create new agent (ORM columns are strings; API uses str enums)
-        pr = agent_data.primary_role
-        primary_role_val = pr.value if hasattr(pr, "value") else str(pr)
+        # Create new agent — store enum values as strings for SQLite compatibility
         agent = Agent(
+            id=str(__import__('uuid').uuid4()),
             name=agent_data.name,
             description=agent_data.description,
-            primary_role=primary_role_val,
+            primary_role=agent_data.primary_role.value if hasattr(agent_data.primary_role, 'value') else agent_data.primary_role,
             status=AgentStatus.ACTIVE.value,
             capabilities=agent_data.capabilities.dict() if agent_data.capabilities else {},
             config=agent_data.config or {}
@@ -218,20 +217,22 @@ async def update_agent(
         raise HTTPException(status_code=500, detail="Failed to update agent")
 
 
-@router.delete("/{agent_id}", status_code=204)
+@router.delete("/{agent_id}", status_code=200)
 async def delete_agent(agent_id: str, db: Session = Depends(get_db)):
     """Delete agent"""
     try:
         agent = db.query(Agent).filter(Agent.id == agent_id).first()
-        
+
         if not agent:
             raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-        
+
+        agent_name = agent.name
         db.delete(agent)
         db.commit()
-        
-        logger.info(f"Deleted agent: {agent.name} (ID: {agent.id})")
-        
+
+        logger.info(f"Deleted agent: {agent_name} (ID: {agent_id})")
+        return {"message": f"Agent {agent_id} deleted"}
+
     except HTTPException:
         raise
     except Exception as e:

@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import { 
   PlusIcon, 
   StopIcon,
@@ -17,29 +16,26 @@ import {
   BeakerIcon
 } from '@heroicons/react/24/outline'
 import { apiClient } from '../lib/api-client'
-import { useProject } from '../store/project-store'
 import { StatusCard } from '../components/ui/Cards/StatusCard'
 import { Modal, ModalBody } from '../components/ui/Modals/Modal'
 import { OverflowMenu } from '../components/ui/Menus/OverflowMenu'
 import { Workflow } from '../types'
 
 const Workflows: React.FC = () => {
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { currentProjectId } = useProject()
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showExamples, setShowExamples] = useState(false)
   // isDragOver state removed - no drag and drop functionality
 
   const { data: workflowsRaw = [], isLoading, error } = useQuery({
-    queryKey: ['workflows', currentProjectId],
-    queryFn: () => apiClient.getWorkflows(currentProjectId),
+    queryKey: ['workflows'],
+    queryFn: () => apiClient.getWorkflows(),
   })
 
-  // Filter out workflows with null IDs and normalize data structure
+  // Normalize data structure (allow workflows without IDs to still render)
   const workflows = workflowsRaw
-    .filter((workflow: any) => workflow.id !== null && workflow.id !== undefined)
+    .filter((workflow: any) => workflow !== null && workflow !== undefined)
     .map((workflow: any) => ({
       ...workflow,
       title: workflow.title || workflow.name || 'Untitled Workflow',
@@ -49,7 +45,7 @@ const Workflows: React.FC = () => {
   const createWorkflowMutation = useMutation({
     mutationFn: (workflowData: any) => apiClient.createWorkflow(workflowData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflows', currentProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['workflows'] })
       setIsCreatingWorkflow(false)
     },
   })
@@ -57,7 +53,7 @@ const Workflows: React.FC = () => {
   const deleteWorkflowMutation = useMutation({
     mutationFn: (workflowId: string) => apiClient.deleteWorkflow(workflowId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflows', currentProjectId] })
+      queryClient.invalidateQueries({ queryKey: ['workflows'] })
     },
   })
 
@@ -66,8 +62,7 @@ const Workflows: React.FC = () => {
       title: `Workflow ${Date.now()}`,
       description: 'A new n8n-style automation workflow',
       status: 'draft',
-      priority: 'medium',
-      projectId: currentProjectId,
+      priority: 'medium'
     }
 
     setIsCreatingWorkflow(true)
@@ -224,135 +219,13 @@ const Workflows: React.FC = () => {
           { id: "fix-to-resolved", source: "bug-fix", target: "bug-resolved" }
         ]
       }
-    },
-    {
-      name: "Data Processing Pipeline",
-      description: "Process incoming data through multiple AI agents for analysis and reporting",
-      category: "Analytics",
-      template: {
-        title: "Data Processing Pipeline",
-        description: "Process incoming data through multiple AI agents for analysis and reporting",
-        status: "draft" as const,
-        priority: "high" as const,
-        nodes: [
-          {
-            id: "data-input",
-            type: "trigger",
-            name: "Data Input Trigger",
-            position: { x: 100, y: 150 },
-            data: { 
-              triggerType: "webhook", 
-              inputs: ["raw_data", "format", "source"] 
-            }
-          },
-          {
-            id: "data-analyzer",
-            type: "agent",
-            name: "Data Analysis Agent",
-            position: { x: 350, y: 150 },
-            data: { 
-              agentRole: "analyst",
-              description: "Analyze incoming data patterns and extract insights",
-              inputs: ["raw_data", "format"],
-              outputs: ["analysis_report", "insights", "anomalies"]
-            }
-          },
-          {
-            id: "report-generator",
-            type: "agent",
-            name: "Report Generation Agent",
-            position: { x: 600, y: 150 },
-            data: {
-              agentRole: "documentation",
-              description: "Generate comprehensive reports with visualizations",
-              inputs: ["analysis_report", "insights"],
-              outputs: ["final_report", "visualizations", "summary"]
-            }
-          },
-          {
-            id: "data-complete",
-            type: "output",
-            name: "Processing Complete",
-            position: { x: 850, y: 150 },
-            data: { outputs: ["final_report", "visualizations", "processed_data"] }
-          }
-        ],
-        edges: [
-          { id: "input-to-analyzer", source: "data-input", target: "data-analyzer" },
-          { id: "analyzer-to-report", source: "data-analyzer", target: "report-generator" },
-          { id: "report-to-complete", source: "report-generator", target: "data-complete" }
-        ]
-      }
-    },
-    {
-      name: "User Onboarding Flow",
-      description: "Complete user onboarding automation with email verification and profile setup",
-      category: "Automation",
-      template: {
-        title: "User Onboarding Workflow",
-        description: "Complete user onboarding automation with email verification, profile setup, and welcome sequence",
-        status: "draft" as const,
-        priority: "high" as const,
-        nodes: [
-          {
-            id: "user-signup",
-            type: "trigger",
-            name: "User Signup Trigger",
-            position: { x: 100, y: 150 },
-            data: { 
-              triggerType: "webhook", 
-              inputs: ["user_data", "email", "registration_source"] 
-            }
-          },
-          {
-            id: "email-verification",
-            type: "agent",
-            name: "Email Verification Agent",
-            position: { x: 350, y: 150 },
-            data: { 
-              agentRole: "communication",
-              description: "Send verification email and wait for confirmation",
-              inputs: ["email", "user_data"],
-              outputs: ["verification_status", "verified_email"]
-            }
-          },
-          {
-            id: "profile-setup",
-            type: "agent",
-            name: "Profile Setup Assistant",
-            position: { x: 600, y: 150 },
-            data: {
-              agentRole: "assistant",
-              description: "Guide user through profile completion",
-              inputs: ["verified_email", "user_data"],
-              outputs: ["profile_complete", "user_preferences"]
-            }
-          },
-          {
-            id: "welcome-sequence",
-            type: "agent",
-            name: "Welcome Email Sequence",
-            position: { x: 850, y: 150 },
-            data: {
-              agentRole: "communication",
-              description: "Send personalized welcome email sequence",
-              inputs: ["profile_complete", "user_preferences"],
-              outputs: ["onboarding_complete", "next_steps"]
-            }
-          }
-        ],
-        edges: [
-          { id: "signup-to-verify", source: "user-signup", target: "email-verification" },
-          { id: "verify-to-profile", source: "email-verification", target: "profile-setup" },
-          { id: "profile-to-welcome", source: "profile-setup", target: "welcome-sequence" }
-        ]
-      }
     }
   ]
 
   const handleCreateFromTemplate = (template: any) => {
     setIsCreatingWorkflow(true)
-    createWorkflowMutation.mutate({ ...template.template, projectId: currentProjectId })
+    const { nodes: _nodes, edges: _edges, ...workflowData } = template.template
+    createWorkflowMutation.mutate(workflowData)
     setShowTemplates(false) // Close modal after creating workflow
   }
 
@@ -467,37 +340,20 @@ const Workflows: React.FC = () => {
             Start with pre-built templates for common automation scenarios.
           </p>
           <div className="flex space-x-3">
-            <button 
+            <button
               onClick={handleBrowseTemplates}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
             >
               <DocumentDuplicateIcon className="h-4 w-4" />
-              <span>Templates</span>
+              <span>Browse Templates</span>
             </button>
-            <OverflowMenu
-              items={[
-                {
-                  id: 'view-examples',
-                  label: 'View Examples',
-                  icon: BeakerIcon,
-                  onClick: handleViewExamples
-                },
-                {
-                  id: 'workflow-docs',
-                  label: 'Documentation',
-                  icon: CheckCircleIcon,
-                  onClick: () => window.open('/workflow-editor.html', '_blank')
-                },
-                {
-                  id: 'export-workflows',
-                  label: 'Export All',
-                  icon: ArrowRightIcon,
-                  onClick: () => console.log('Export all workflows')
-                }
-              ]}
-              buttonVariant="outline"
-              buttonLabel=""
-            />
+            <button
+              onClick={handleViewExamples}
+              className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
+            >
+              <BeakerIcon className="h-4 w-4" />
+              <span>View Examples</span>
+            </button>
           </div>
         </div>
       </div>
@@ -531,9 +387,9 @@ const Workflows: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {workflows.map((workflow: Workflow) => (
+              {workflows.map((workflow: Workflow, index: number) => (
                 <div
-                  key={workflow.id}
+                  key={workflow.id ?? String(index)}
                   className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer"
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -557,10 +413,21 @@ const Workflows: React.FC = () => {
                       Updated {new Date(workflow.updatedAt).toLocaleDateString()}
                     </span>
                     <div className="flex items-center space-x-2">
-                      <button 
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      <button
+                        className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                         title="Edit workflow"
-                        onClick={() => window.location.href = `/workflow-editor.html?id=${workflow.id}`}
+                        aria-label={`Edit workflow ${workflow.title}`}
+                        onClick={() => {
+                          try {
+                            window.open(
+                              `http://localhost:3001/workflow-editor.html?workflowId=${workflow.id}`,
+                              '_blank',
+                              'width=1400,height=900'
+                            )
+                          } catch (err) {
+                            console.error('Failed to open workflow editor:', err)
+                          }
+                        }}
                       >
                         <Cog6ToothIcon className="h-4 w-4" />
                       </button>
@@ -571,12 +438,10 @@ const Workflows: React.FC = () => {
                             label: 'Duplicate',
                             icon: DocumentDuplicateIcon,
                             onClick: () => {
-                              const { id: _omitId, ...rest } = workflow as Workflow & { id?: string }
                               const duplicatedWorkflow = {
-                                ...rest,
+                                ...workflow,
                                 title: `${workflow.title} (Copy)`,
-                                status: 'draft' as const,
-                                projectId: currentProjectId,
+                                status: 'draft' as const
                               }
                               createWorkflowMutation.mutate(duplicatedWorkflow)
                             }
@@ -704,14 +569,39 @@ const Workflows: React.FC = () => {
             <div className="flex items-center">
               <DocumentDuplicateIcon className="h-5 w-5 text-blue-500 mr-2" />
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Start with Templates:</strong> Click "Use Template" to create a new workflow from any template below
+                <strong>Drag &amp; Drop:</strong> Drag templates to your workspace or click "Use Template" to create instantly
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            onDragOver={(e) => {
+              e.preventDefault()
+              if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              try {
+                const data = JSON.parse(e.dataTransfer.getData('application/json'))
+                if (!data) return
+                if (data.name && data.template) {
+                  handleCreateFromTemplate(data)
+                } else if (data.title) {
+                  createWorkflowMutation.mutate(data)
+                }
+              } catch (err) {
+                console.error('Invalid drop data:', err)
+              }
+            }}
+          >
             {workflowTemplates.map((template, index) => (
               <div
                 key={index}
+                draggable="true"
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/json', JSON.stringify(template))
+                  e.dataTransfer.effectAllowed = 'copy'
+                }}
                 className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-blue-300 dark:hover:border-blue-600"
               >
                 <div className="flex items-center mb-3">
@@ -720,6 +610,9 @@ const Workflows: React.FC = () => {
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                   {template.description}
+                </p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mb-3 italic">
+                  Drag me to create
                 </p>
                 <div className="flex items-center justify-between">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">

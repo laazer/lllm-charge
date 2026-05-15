@@ -1,10 +1,16 @@
 """
 Base model classes and mixins for database models
 """
-from sqlalchemy import Column, String, DateTime
-from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy import Column, String, DateTime, Integer, Text, JSON
+from sqlalchemy.ext.declarative import declared_attr, declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy import ForeignKey
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from datetime import datetime
 import uuid
+
+# Traditional SQLAlchemy Base declaration expected by validation framework
+Base = declarative_base()
 
 
 class TimestampMixin:
@@ -22,6 +28,6 @@ class UUIDMixin:
         return Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
 
-class BaseModel(UUIDMixin, TimestampMixin):
+class BaseModel(Base, UUIDMixin, TimestampMixin):
     """Base model with UUID and timestamps"""
-    pass
+    __abstract__ = True

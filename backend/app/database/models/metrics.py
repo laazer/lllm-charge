@@ -4,7 +4,7 @@ SQLAlchemy models for metrics and performance tracking
 from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database.database import Base
+from .base import Base
 
 
 class RequestMetric(Base):

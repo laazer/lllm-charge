@@ -35,21 +35,55 @@ def call_llm(
     headers = _build_headers(config)
     url = config.endpoint_url
 
-    if HAS_REQUESTS:
-        response = requests.post(
-            url, json=payload, headers=headers, timeout=config.timeout_seconds
+    # Check for HTTP clients with better error messages
+    if not HAS_REQUESTS and not HAS_HTTPX:
+        raise RuntimeError(
+            "No HTTP client available for LLM integration. "
+            "Install either 'requests' or 'httpx':\n"
+            "  pip install requests>=2.31.0\n"
+            "  pip install httpx>=0.25.0\n"
+            "At least one is required for LLM API communication."
         )
-        response.raise_for_status()
-        return _extract_response_text(response.json())
 
-    if HAS_HTTPX:
-        with httpx.Client(timeout=config.timeout_seconds) as client:
-            response = client.post(url, json=payload, headers=headers)
+    error_messages = []
+
+    # Try requests first (more common)
+    if HAS_REQUESTS:
+        try:
+            logger.debug(f"Calling LLM endpoint: {url}")
+            response = requests.post(
+                url, json=payload, headers=headers, timeout=config.timeout_seconds
+            )
             response.raise_for_status()
-            return _extract_response_text(response.json())
+            result = _extract_response_text(response.json())
+            logger.debug(f"LLM response received: {len(result)} characters")
+            return result
+        except Exception as e:
+            error_msg = f"requests failed: {e}"
+            error_messages.append(error_msg)
+            logger.warning(error_msg)
 
+    # Try httpx as fallback
+    if HAS_HTTPX:
+        try:
+            logger.debug(f"Calling LLM endpoint with httpx: {url}")
+            with httpx.Client(timeout=config.timeout_seconds) as client:
+                response = client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                result = _extract_response_text(response.json())
+                logger.debug(f"LLM response received: {len(result)} characters")
+                return result
+        except Exception as e:
+            error_msg = f"httpx failed: {e}"
+            error_messages.append(error_msg)
+            logger.warning(error_msg)
+
+    # Both clients failed
+    combined_errors = "; ".join(error_messages)
     raise RuntimeError(
-        "Neither 'requests' nor 'httpx' is installed. Install one: pip install requests"
+        f"LLM API call failed with all available HTTP clients. Errors: {combined_errors}\n"
+        f"Check your LLM endpoint configuration: {url}\n"
+        f"Model: {config.model_name}, Timeout: {config.timeout_seconds}s"
     )
 
 

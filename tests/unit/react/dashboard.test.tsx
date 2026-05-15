@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import Dashboard from '../../../src/react/pages/Dashboard'
 import { WebSocketProvider } from '../../../src/react/store/websocket-store'
-import { ProjectProvider } from '../../../src/react/store/project-store'
 import { apiClient } from '../../../src/react/lib/api-client'
 import { MockWebSocket, MockWebSocketServer } from '../../__mocks__/websocket-mock'
 
@@ -51,11 +50,9 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <ProjectProvider>
-          <WebSocketProvider wsUrl="ws://localhost:3001">
-            {children}
-          </WebSocketProvider>
-        </ProjectProvider>
+        <WebSocketProvider wsUrl="ws://localhost:3001">
+          {children}
+        </WebSocketProvider>
       </BrowserRouter>
     </QueryClientProvider>
   )
