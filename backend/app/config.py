@@ -17,10 +17,12 @@ class Settings(BaseSettings):
 
     # CORS configuration — defaults used when env file is missing or invalid
     cors_origins: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
+        "http://localhost:7891",
+        "http://localhost:7892",
+        "http://127.0.0.1:7891",
+        "http://127.0.0.1:7892",
+        "http://192.168.0.113:7891",
+        "http://192.168.0.113:7892",
     ]
 
     # Application configuration

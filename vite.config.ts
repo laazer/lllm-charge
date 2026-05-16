@@ -38,7 +38,7 @@ export default defineConfig({
   },
   root: './src/react',
   build: {
-    outDir: '../../dist/react',
+    outDir: '../../backend/static',
     emptyOutDir: true,
     sourcemap: process.env.NODE_ENV === 'development',
     minify: 'terser',
@@ -114,14 +114,29 @@ export default defineConfig({
     target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
   },
   server: {
-    port: 3000,
+    port: 7892,
+    strictPort: true,
     proxy: {
-      '/api': process.env.BACKEND_URL || 'http://localhost:8000',
-      '/mcp': process.env.BACKEND_URL || 'http://localhost:8000',
-      '/ws': { target: process.env.BACKEND_URL || 'http://localhost:8000', ws: true },
+      '/api': {
+        target: process.env.BACKEND_URL || 'http://localhost:7891',
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
+      '/mcp': {
+        target: process.env.BACKEND_URL || 'http://localhost:7891',
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
+      '/ws': {
+        target: process.env.BACKEND_URL || 'http://localhost:7891',
+        ws: true,
+        changeOrigin: true,
+      },
     },
     hmr: {
-      port: 3000,
+      host: '0.0.0.0',
+      port: 7892,
+      protocol: 'ws',
     },
   },
   define: {

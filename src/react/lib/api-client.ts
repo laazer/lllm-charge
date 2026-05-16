@@ -15,7 +15,7 @@ class ApiClient {
   private baseUrl: string
   private headers: Record<string, string>
 
-  constructor(baseUrl = 'http://localhost:3001/api') {
+  constructor(baseUrl = '/api') {
     this.baseUrl = baseUrl
     this.headers = {
       'Content-Type': 'application/json',
@@ -78,7 +78,8 @@ class ApiClient {
   }
 
   async getProjects(): Promise<Project[]> {
-    return this.request<Project[]>('/projects')
+    const response = await this.request<{projects: Project[], total: number}>('/projects')
+    return response.projects || []
   }
 
   async getProject(id: string): Promise<Project> {
@@ -108,7 +109,8 @@ class ApiClient {
   // Agents API
   async getAgents(projectId?: string): Promise<Agent[]> {
     const endpoint = projectId ? `/projects/${projectId}/agents` : '/agents'
-    return this.request<Agent[]>(endpoint)
+    const response = await this.request<{agents: Agent[], total: number}>(endpoint)
+    return response.agents || []
   }
 
   async getAgent(id: string): Promise<Agent> {
@@ -142,7 +144,8 @@ class ApiClient {
   // Specs API
   async getSpecs(projectId?: string): Promise<Spec[]> {
     const endpoint = projectId ? `/projects/${projectId}/specs` : '/specs'
-    return this.request<Spec[]>(endpoint)
+    const response = await this.request<{specs: Spec[], total: number}>(endpoint)
+    return response.specs || []
   }
 
   async getSpec(id: string): Promise<Spec> {
@@ -176,7 +179,8 @@ class ApiClient {
   // Workflows API
   async getWorkflows(projectId?: string): Promise<Workflow[]> {
     const endpoint = projectId ? `/projects/${projectId}/workflows` : '/workflows'
-    return this.request<Workflow[]>(endpoint)
+    const response = await this.request<{workflows: Workflow[], total: number}>(endpoint)
+    return response.workflows || []
   }
 
   async getWorkflow(id: string): Promise<Workflow> {
@@ -210,7 +214,8 @@ class ApiClient {
   // Memory API
   async getMemoryNotes(projectId?: string): Promise<MemoryNote[]> {
     const endpoint = projectId ? `/projects/${projectId}/notes` : '/memory/notes'
-    return this.request<MemoryNote[]>(endpoint)
+    const response = await this.request<{notes: MemoryNote[], total: number}>(endpoint)
+    return response.notes || []
   }
 
   async getMemoryNote(id: string): Promise<MemoryNote> {
@@ -243,7 +248,8 @@ class ApiClient {
 
   async getMemoryCheckpoints(projectId?: string): Promise<MemoryCheckpoint[]> {
     const endpoint = projectId ? `/projects/${projectId}/checkpoints` : '/memory/checkpoints'
-    return this.request<MemoryCheckpoint[]>(endpoint)
+    const response = await this.request<{checkpoints: MemoryCheckpoint[], total: number}>(endpoint)
+    return response.checkpoints || []
   }
 
   async createMemoryCheckpoint(checkpoint: Partial<MemoryCheckpoint>): Promise<MemoryCheckpoint> {

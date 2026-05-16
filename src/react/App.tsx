@@ -153,7 +153,7 @@ function App() {
       }}
     >
       <ThemeProvider>
-        <WebSocketProvider wsUrl={`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:3001`}>
+        <WebSocketProvider wsUrl={`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port || (window.location.protocol === 'https:' ? 443 : 80)}/ws`}>
           <ProjectProvider>
             <AppContent />
           </ProjectProvider>

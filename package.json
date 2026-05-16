@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "dev:backend": "cd backend && uv run -m uvicorn app.main:app --host 0.0.0.0 --port 7891 --reload",
+    "dev:frontend": "vite --host",
+    "dev:all": "sh -c 'export PATH=/usr/local/opt/node@22/bin:$PATH && node /usr/local/opt/node@22/lib/node_modules/npm/bin/npm-cli.js run dev:all:exec'",
+    "dev:all:exec": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "vite build",
     "build:react": "NODE_ENV=production vite build",
     "build:react:dev": "NODE_ENV=development vite build",

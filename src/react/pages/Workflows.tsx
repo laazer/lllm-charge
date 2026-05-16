@@ -420,7 +420,7 @@ const Workflows: React.FC = () => {
                         onClick={() => {
                           try {
                             window.open(
-                              `http://localhost:3001/workflow-editor.html?workflowId=${workflow.id}`,
+                              `http://localhost:7891/workflow-editor.html?workflowId=${workflow.id}`,
                               '_blank',
                               'width=1400,height=900'
                             )

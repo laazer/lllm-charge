@@ -1,12 +1,8 @@
 {
   "mcpServers": {
-    "lllm-charge": {
-      "type": "stdio",
-      "command": "node",
-      "args": [
-        "/Users/jacob.brandt/workspace/lllm-charge/dist/src/mcp/godot-mcp-server.js",
-        "/Users/jacob.brandt/workspace/lllm-charge"
-      ]
+    "llm-charge": {
+      "type": "http",
+      "url": "http://localhost:7891/mcp"
     }
   }
 }

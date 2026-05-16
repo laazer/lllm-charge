@@ -35,7 +35,16 @@
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('mcpServers', {}\\), indent=2\\)\\)\")",
       "Bash(python3:*)",
       "Bash(npm run:*)",
-      "Bash(ls /Users/jacobbrandt/workspace/lllm-charge/node_modules/web-tree-sitter/*.d.ts)"
+      "Bash(ls /Users/jacobbrandt/workspace/lllm-charge/node_modules/web-tree-sitter/*.d.ts)",
+      "Bash(uv --version)",
+      "Bash(uv sync *)",
+      "Bash(npm --version)",
+      "Bash(/usr/local/opt/node@22/bin/node --version)",
+      "Bash(pkill -f \"npm run dev:all\")",
+      "Bash(pkill -f \"uvicorn\")",
+      "Bash(curl -s http://localhost:7891/api/health)",
+      "Bash(curl -s http://localhost:7891/api/projects)",
+      "Bash(curl -s http://localhost:7892)"
     ],
     "deny": [],
     "ask": []

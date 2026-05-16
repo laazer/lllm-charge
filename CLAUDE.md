@@ -12,10 +12,18 @@
 - New background tasks go in `backend/app/` as Python modules
 
 Starting the system:
-  Terminal 1: `cd backend && venv/bin/python -m uvicorn app.main:app --port 8000 --reload`
-  Terminal 2: `npm run dev`  (starts Vite on port 3000, proxies /api → :8000)
+  **Option 1 (Recommended - Single Command):**
+  `npm run dev:all`
+  
+  **Option 2 (Separate Terminals):**
+  Terminal 1: `npm run dev:backend`  (Backend on port 7891)
+  Terminal 2: `npm run dev:frontend` (Frontend dev on port 7892, proxies /api & /mcp → :7891)
 
-Or use: `npm run dev:full` to start both together.
+Access Points:
+  - Frontend (dev): http://localhost:7892
+  - Backend API: http://localhost:7891/api
+  - MCP tools: http://localhost:7891/mcp
+  - Frontend (production build): http://localhost:7891
 
 ## Project Overview
 
