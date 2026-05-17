@@ -83,7 +83,7 @@ class ApiClient {
   }
 
   async getProjects(): Promise<Project[]> {
-    const response = await this.request<{projects: Project[], total: number}>('/projects')
+    const response = await this.request<{projects: Project[], total: number}>('/projects/')
     return response.projects || []
   }
 
@@ -113,7 +113,7 @@ class ApiClient {
 
   // Agents API
   async getAgents(projectId?: string): Promise<Agent[]> {
-    const endpoint = projectId ? `/agents?project_id=${projectId}` : '/agents'
+    const endpoint = projectId ? `/agents/?project_id=${projectId}` : '/agents/'
     const response = await this.request<{agents: Agent[], total: number}>(endpoint)
     return response.agents || []
   }
@@ -144,7 +144,7 @@ class ApiClient {
 
   // Specs API
   async getSpecs(projectId?: string): Promise<Spec[]> {
-    const endpoint = projectId ? `/specs?project_id=${projectId}` : '/specs'
+    const endpoint = projectId ? `/specs/?project_id=${projectId}` : '/specs/'
     const response = await this.request<{specs: Spec[], total: number}>(endpoint)
     return response.specs || []
   }
@@ -175,7 +175,7 @@ class ApiClient {
 
   // Workflows API
   async getWorkflows(projectId?: string): Promise<Workflow[]> {
-    const endpoint = projectId ? `/workflows?project_id=${projectId}` : '/workflows'
+    const endpoint = projectId ? `/workflows/?project_id=${projectId}` : '/workflows/'
     const response = await this.request<{workflows: Workflow[], total: number}>(endpoint)
     return response.workflows || []
   }
@@ -216,10 +216,10 @@ class ApiClient {
   }
 
   async createMemoryNote(note: Partial<MemoryNote>): Promise<MemoryNote> {
-    const endpoint = note.projectId 
-      ? `/projects/${note.projectId}/notes` 
+    const endpoint = note.projectId
+      ? `/projects/${note.projectId}/notes`
       : '/memory/notes'
-    
+
     return this.request<MemoryNote>(endpoint, {
       method: 'POST',
       body: JSON.stringify(note),
@@ -246,10 +246,10 @@ class ApiClient {
   }
 
   async createMemoryCheckpoint(checkpoint: Partial<MemoryCheckpoint>): Promise<MemoryCheckpoint> {
-    const endpoint = checkpoint.projectId 
-      ? `/projects/${checkpoint.projectId}/checkpoints` 
+    const endpoint = checkpoint.projectId
+      ? `/projects/${checkpoint.projectId}/checkpoints`
       : '/memory/checkpoints'
-    
+
     return this.request<MemoryCheckpoint>(endpoint, {
       method: 'POST',
       body: JSON.stringify(checkpoint),
