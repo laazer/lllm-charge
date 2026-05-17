@@ -22,6 +22,7 @@ class ProjectCreate(BaseModel):
     path: Optional[str] = None
     key: Optional[str] = None
     type: Optional[str] = None
+    codegraph_path: Optional[str] = None
 
 
 class ProjectResponse(BaseModel):
@@ -30,6 +31,7 @@ class ProjectResponse(BaseModel):
     description: Optional[str]
     key: Optional[str]
     type: Optional[str]
+    codegraph_path: Optional[str] = None
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
@@ -53,6 +55,7 @@ def _project_to_response(proj: Project) -> ProjectResponse:
         description=proj.description,
         key=proj.key,
         type=proj.type,
+        codegraph_path=proj.codegraph_path,
         created_at=proj.created_at,
         updated_at=proj.updated_at,
     )
@@ -75,6 +78,7 @@ async def create_project(payload: ProjectCreate, db: Session = Depends(get_db)):
         description=payload.description,
         key=payload.key,
         type=payload.type,
+        codegraph_path=payload.codegraph_path or payload.path,
     )
     db.add(project)
     db.commit()
@@ -104,6 +108,10 @@ async def update_project(
         project.key = payload.key
     if payload.type is not None:
         project.type = payload.type
+    if payload.codegraph_path is not None:
+        project.codegraph_path = payload.codegraph_path
+    elif payload.path is not None:
+        project.codegraph_path = payload.path
     db.commit()
     db.refresh(project)
     return _project_to_response(project)

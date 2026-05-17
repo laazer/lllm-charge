@@ -144,13 +144,34 @@ def codegraph_search(request: CodeGraphSearchRequest) -> Dict[str, Any]:
 def codegraph_switch(request: CodeGraphSwitchRequest) -> Dict[str, Any]:
     """Switch the active codegraph project directory."""
     global CODEGRAPH_PROJECT_DIR
+    from sqlalchemy.orm import Session
+    from app.database.database import SessionLocal
+    from app.database.models.main import Project
 
     # Handle both project_path and project_id (projectId from frontend)
     project_path = request.project_path
+
     if not project_path and (request.project_id or request.projectId):
-        # If only projectId is provided, use the workspace root
-        # In a real implementation, we'd look up the project path from the database
-        project_path = CODEGRAPH_PROJECT_DIR
+        # Look up the project path from the database
+        project_id = request.project_id or request.projectId
+        try:
+            db = SessionLocal()
+            project = db.query(Project).filter(Project.id == project_id).first()
+            db.close()
+
+            if project:
+                # Use codegraph_path if set, otherwise try to infer from workspace
+                if project.codegraph_path:
+                    project_path = project.codegraph_path
+                else:
+                    # Fallback: assume project is in workspace with name matching project.name
+                    # This helps blobert find /Users/jacobbrandt/workspace/blobert
+                    workspace_root = Path(CODEGRAPH_PROJECT_DIR).parent.resolve()
+                    inferred_path = workspace_root / project.name.lower()
+                    if inferred_path.exists():
+                        project_path = str(inferred_path)
+        except Exception:
+            pass  # Fall through to error handling below
 
     if not project_path:
         return {
