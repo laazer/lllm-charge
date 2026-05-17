@@ -8,8 +8,9 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-# Workspace root used as sandbox boundary — patched in tests
-WORKSPACE_ROOT = str(Path(__file__).parent.parent.parent.parent.resolve())
+# Workspace root used as sandbox boundary — allow browsing entire workspace directory
+# Points to /Users/jacobbrandt/workspace to allow discovering projects in sibling directories
+WORKSPACE_ROOT = str(Path(__file__).parent.parent.parent.parent.parent.resolve())
 
 router = APIRouter(prefix="/api/filesystem", tags=["filesystem"])
 
@@ -29,7 +30,10 @@ def _resolve_safe_path(path: str) -> Path:
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid path: {exc}") from exc
 
-    if not str(resolved).startswith(str(workspace)):
+    # Check if resolved path is the workspace root or a child of it
+    try:
+        resolved.relative_to(workspace)
+    except ValueError:
         raise HTTPException(
             status_code=403,
             detail=f"Path '{path}' is outside the allowed workspace",
@@ -43,12 +47,13 @@ def _entry_metadata(entry: os.DirEntry) -> Dict[str, Any]:
         stat = entry.stat()
         return {
             "name": entry.name,
+            "path": entry.path,
             "type": "dir" if entry.is_dir() else "file",
             "size": stat.st_size if entry.is_file() else None,
             "modified": stat.st_mtime,
         }
     except OSError:
-        return {"name": entry.name, "type": "unknown", "size": None, "modified": None}
+        return {"name": entry.name, "path": entry.path, "type": "unknown", "size": None, "modified": None}
 
 
 @router.post("/browse")
@@ -58,6 +63,7 @@ def browse_directory(request: BrowseRequest) -> Dict[str, Any]:
     Returns 403 when *path* is outside the workspace, 404 when it doesn't exist.
     """
     resolved = _resolve_safe_path(request.path)
+    workspace = Path(WORKSPACE_ROOT).resolve()
 
     if not resolved.exists():
         raise HTTPException(status_code=404, detail=f"Path not found: {request.path}")
@@ -69,4 +75,23 @@ def browse_directory(request: BrowseRequest) -> Dict[str, Any]:
         (_entry_metadata(e) for e in os.scandir(resolved)),
         key=lambda e: (e["type"] != "dir", e["name"].lower()),
     )
-    return {"path": str(resolved), "entries": entries}
+
+    # Filter to only directories for the frontend
+    directories = [e for e in entries if e["type"] == "dir"]
+
+    # Parent directory path (only if not at workspace root)
+    parent = None
+    if resolved != workspace:
+        parent_path = resolved.parent
+        try:
+            parent_path.relative_to(workspace)
+            parent = str(parent_path)
+        except ValueError:
+            # Parent is outside workspace, don't expose it
+            parent = None
+
+    return {
+        "current": str(resolved),
+        "parent": parent,
+        "directories": directories
+    }

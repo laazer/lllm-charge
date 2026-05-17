@@ -44,7 +44,11 @@
       "Bash(pkill -f \"uvicorn\")",
       "Bash(curl -s http://localhost:7891/api/health)",
       "Bash(curl -s http://localhost:7891/api/projects)",
-      "Bash(curl -s http://localhost:7892)"
+      "Bash(curl -s http://localhost:7892)",
+      "Bash(curl -s \"http://localhost:7891/api/specs\")",
+      "Bash(curl -s \"http://localhost:7891/api/agents\")",
+      "Bash(curl -s \"http://localhost:7891/api/workflows\")",
+      "Bash(curl -v http://localhost:7891/api/projects/)"
     ],
     "deny": [],
     "ask": []

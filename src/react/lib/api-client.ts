@@ -23,11 +23,11 @@ class ApiClient {
   }
 
   private async request<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`
-    
+
     const config: RequestInit = {
       headers: { ...this.headers, ...options.headers },
       ...options,
@@ -35,9 +35,14 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config)
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      // Handle 204 No Content responses
+      if (response.status === 204) {
+        return undefined as T
       }
 
       return await response.json()
@@ -55,7 +60,7 @@ class ApiClient {
   }> {
     return this.request('/filesystem/browse', {
       method: 'POST',
-      body: JSON.stringify({ path: directoryPath }),
+      body: JSON.stringify({ path: directoryPath || '/Users/jacobbrandt/workspace' }),
     })
   }
 
@@ -87,7 +92,7 @@ class ApiClient {
   }
 
   async createProject(project: Partial<Project>): Promise<Project> {
-    return this.request<Project>('/projects', {
+    return this.request<Project>('/projects/', {
       method: 'POST',
       body: JSON.stringify(project),
     })
@@ -108,7 +113,7 @@ class ApiClient {
 
   // Agents API
   async getAgents(projectId?: string): Promise<Agent[]> {
-    const endpoint = projectId ? `/projects/${projectId}/agents` : '/agents'
+    const endpoint = projectId ? `/agents?project_id=${projectId}` : '/agents'
     const response = await this.request<{agents: Agent[], total: number}>(endpoint)
     return response.agents || []
   }
@@ -118,11 +123,7 @@ class ApiClient {
   }
 
   async createAgent(agent: Partial<Agent>): Promise<Agent> {
-    const endpoint = agent.projectId 
-      ? `/projects/${agent.projectId}/agents` 
-      : '/agents'
-    
-    return this.request<Agent>(endpoint, {
+    return this.request<Agent>('/agents/', {
       method: 'POST',
       body: JSON.stringify(agent),
     })
@@ -143,7 +144,7 @@ class ApiClient {
 
   // Specs API
   async getSpecs(projectId?: string): Promise<Spec[]> {
-    const endpoint = projectId ? `/projects/${projectId}/specs` : '/specs'
+    const endpoint = projectId ? `/specs?project_id=${projectId}` : '/specs'
     const response = await this.request<{specs: Spec[], total: number}>(endpoint)
     return response.specs || []
   }
@@ -153,11 +154,7 @@ class ApiClient {
   }
 
   async createSpec(spec: Partial<Spec>): Promise<Spec> {
-    const endpoint = spec.projectId 
-      ? `/projects/${spec.projectId}/specs` 
-      : '/specs'
-    
-    return this.request<Spec>(endpoint, {
+    return this.request<Spec>('/specs/', {
       method: 'POST',
       body: JSON.stringify(spec),
     })
@@ -178,7 +175,7 @@ class ApiClient {
 
   // Workflows API
   async getWorkflows(projectId?: string): Promise<Workflow[]> {
-    const endpoint = projectId ? `/projects/${projectId}/workflows` : '/workflows'
+    const endpoint = projectId ? `/workflows?project_id=${projectId}` : '/workflows'
     const response = await this.request<{workflows: Workflow[], total: number}>(endpoint)
     return response.workflows || []
   }
@@ -188,11 +185,7 @@ class ApiClient {
   }
 
   async createWorkflow(workflow: Partial<Workflow>): Promise<Workflow> {
-    const endpoint = workflow.projectId 
-      ? `/projects/${workflow.projectId}/workflows` 
-      : '/workflows'
-    
-    return this.request<Workflow>(endpoint, {
+    return this.request<Workflow>('/workflows/', {
       method: 'POST',
       body: JSON.stringify(workflow),
     })

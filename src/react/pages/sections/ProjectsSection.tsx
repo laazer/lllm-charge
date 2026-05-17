@@ -455,7 +455,7 @@ function ImportProjectModal({
     try {
       const result = await apiClient.scanProjectPath(target)
       setScanResult(result)
-      setProjectPath(result.path)
+      setProjectPath(result.path || target)
       setShowBrowser(false)
     } catch (error) {
       setScanError(error instanceof Error ? error.message : 'Failed to scan path')
@@ -474,20 +474,21 @@ function ImportProjectModal({
   }
 
   const handleImport = async () => {
-    if (!scanResult) return
+    if (!scanResult || !scanResult.detected) return
     setIsImporting(true)
     try {
       const { detected } = scanResult
+      const name = detected?.name || 'Unknown Project'
       await onImport(
         {
-          name: detected.name,
-          description: detected.description,
-          key: generateProjectKey(detected.name),
-          type: detected.type as ProjectType,
-          lead: detected.lead,
+          name,
+          description: detected?.description || '',
+          key: generateProjectKey(name),
+          type: (detected?.type || 'software') as ProjectType,
+          lead: detected?.lead || '',
           codeGraphPath: scanResult.path,
         },
-        detected.agentConfig,
+        detected?.agentConfig || {},
       )
       onClose()
     } catch (error) {
@@ -537,7 +538,7 @@ function ImportProjectModal({
               </button>
               <button
                 onClick={() => handleScan()}
-                disabled={isScanning || !projectPath.trim()}
+                disabled={isScanning || !projectPath?.trim()}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white
                          rounded-lg text-sm font-medium transition-colors whitespace-nowrap
                          disabled:opacity-50 disabled:cursor-not-allowed"
@@ -550,7 +551,10 @@ function ImportProjectModal({
 
           {/* Directory browser */}
           {showBrowser && !scanResult && (
-            <DirectoryBrowser onSelect={handleBrowserSelect} />
+            <div className="space-y-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Browse or type a path:</p>
+              <DirectoryBrowser onSelect={handleBrowserSelect} />
+            </div>
           )}
 
           {/* Error */}
@@ -560,8 +564,21 @@ function ImportProjectModal({
             </div>
           )}
 
+          {/* Scanning progress */}
+          {isScanning && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-300">Scanning project...</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-400 mt-1 font-mono truncate">{projectPath}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Scan results */}
-          {scanResult && (
+          {scanResult && scanResult.detected && (
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                 <div>
@@ -579,19 +596,19 @@ function ImportProjectModal({
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">Name:</span>
-                  <span className="ml-2 font-medium text-gray-900 dark:text-white">{scanResult.detected.name}</span>
+                  <span className="ml-2 font-medium text-gray-900 dark:text-white">{scanResult.detected?.name || 'Unknown'}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">Type:</span>
-                  <span className="ml-2 font-medium text-gray-900 dark:text-white capitalize">{scanResult.detected.type}</span>
+                  <span className="ml-2 font-medium text-gray-900 dark:text-white capitalize">{scanResult.detected?.type || 'unknown'}</span>
                 </div>
-                {scanResult.detected.description && (
+                {scanResult.detected?.description && (
                   <div className="col-span-2">
                     <span className="text-gray-500 dark:text-gray-400">Description:</span>
                     <span className="ml-2 text-gray-900 dark:text-white">{scanResult.detected.description}</span>
                   </div>
                 )}
-                {scanResult.detected.lead && (
+                {scanResult.detected?.lead && (
                   <div className="col-span-2">
                     <span className="text-gray-500 dark:text-gray-400">Author:</span>
                     <span className="ml-2 text-gray-900 dark:text-white">{scanResult.detected.lead}</span>
@@ -600,17 +617,17 @@ function ImportProjectModal({
               </div>
 
               {/* Detected paths */}
-              {(scanResult.detected.codeGraphPath || Object.keys(scanResult.detected.agentConfig).length > 0) && (
+              {(scanResult.detected?.codeGraphPath || (scanResult.detected?.agentConfig && Object.keys(scanResult.detected.agentConfig).length > 0)) && (
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Detected Paths</p>
                   <div className="space-y-1 text-xs font-mono">
-                    {scanResult.detected.codeGraphPath && (
+                    {scanResult.detected?.codeGraphPath && (
                       <div className="flex items-center space-x-2">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-800/20 dark:text-purple-400">CodeGraph</span>
                         <span className="text-gray-600 dark:text-gray-400 truncate">{scanResult.detected.codeGraphPath}</span>
                       </div>
                     )}
-                    {Object.entries(scanResult.detected.agentConfig).map(([key, value]) => (
+                    {scanResult.detected?.agentConfig && Object.entries(scanResult.detected.agentConfig).map(([key, value]) => (
                       <div key={key} className="flex items-center space-x-2">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400 capitalize">
                           {key.replace(/Path$|Dir$/, '')}

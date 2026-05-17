@@ -118,19 +118,68 @@ async def delete_project(project_id: str, db: Session = Depends(get_db)):
     db.commit()
 
 
+def _scan_project_metadata(project_path: str) -> dict:
+    """Detect project metadata from a directory."""
+    metadata = {
+        "name": os.path.basename(project_path),
+        "description": "",
+        "type": "software",
+        "lead": "Unknown",
+        "codeGraphPath": None,
+        "agentConfig": {},
+    }
+
+    # Check for CLAUDE.md to infer type and description
+    claude_md_path = os.path.join(project_path, "CLAUDE.md")
+    if os.path.exists(claude_md_path):
+        metadata["codeGraphPath"] = claude_md_path
+
+    # Check for .codegraph directory
+    codegraph_path = os.path.join(project_path, ".codegraph")
+    if os.path.isdir(codegraph_path):
+        metadata["codeGraphPath"] = codegraph_path
+
+    # Detect agent configuration
+    agent_config = {}
+    if os.path.exists(os.path.join(project_path, "CLAUDE.md")):
+        agent_config["claudeMdPath"] = os.path.join(project_path, "CLAUDE.md")
+    if os.path.exists(os.path.join(project_path, "AGENT.md")):
+        agent_config["agentMdPath"] = os.path.join(project_path, "AGENT.md")
+
+    # Check for common project directories
+    for dirname in ["skills", "agents", "workflows"]:
+        dir_path = os.path.join(project_path, dirname)
+        if os.path.isdir(dir_path):
+            agent_config[f"{dirname}Dir"] = dir_path
+
+    metadata["agentConfig"] = agent_config
+
+    # Try to detect project type from directory contents
+    if os.path.exists(os.path.join(project_path, "package.json")):
+        metadata["type"] = "software"
+    elif os.path.exists(os.path.join(project_path, "pyproject.toml")):
+        metadata["type"] = "software"
+    elif os.path.exists(os.path.join(project_path, ".codegraph")):
+        metadata["type"] = "research"
+
+    return metadata
+
+
 @router.post("/scan")
 async def scan_projects(body: ScanRequest):
+    """Scan a directory for a project and return its metadata."""
     scan_path = body.path
-    discovered = []
-    if os.path.isdir(scan_path):
-        for entry in os.scandir(scan_path):
-            if entry.is_dir():
-                discovered.append({
-                    "name": entry.name,
-                    "path": entry.path,
-                    "type": "directory",
-                })
-    return {"projects": discovered}
+
+    if not os.path.isdir(scan_path):
+        raise HTTPException(status_code=404, detail=f"Path not found: {scan_path}")
+
+    # Scan the provided path
+    detected = _scan_project_metadata(scan_path)
+
+    return {
+        "path": os.path.abspath(scan_path),
+        "detected": detected,
+    }
 
 
 @router.post("/import-samples")

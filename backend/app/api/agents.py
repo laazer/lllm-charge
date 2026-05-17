@@ -23,13 +23,14 @@ async def get_agents(
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     role: Optional[AgentRole] = Query(None, description="Filter by role"),
     status: Optional[AgentStatus] = Query(None, description="Filter by status"),
-    search: Optional[str] = Query(None, description="Search in name and description")
+    search: Optional[str] = Query(None, description="Search in name and description"),
+    project_id: Optional[str] = Query(None, description="Filter by project ID")
 ):
     """Get all agents with pagination and filtering"""
     try:
         # Build query
         query = db.query(Agent)
-        
+
         # Apply filters — extract .value from enums for SQLite string columns
         if role:
             role_value = role.value if hasattr(role, 'value') else role
@@ -43,6 +44,8 @@ async def get_agents(
                 (Agent.name.ilike(search_term)) |
                 (Agent.description.ilike(search_term))
             )
+        if project_id:
+            query = query.filter(Agent.project_id == project_id)
         
         # Get total count
         total = query.count()
