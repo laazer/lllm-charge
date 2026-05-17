@@ -147,10 +147,14 @@ function CodeGraph() {
     if (!effectivePath) return
     setIsSyncing(true)
     setSyncMessage(isGodotProject ? 'Initializing Godot index...' : 'Starting sync...')
+    console.log('handleSync started', { isGodotProject, effectivePath, switchedProjectRoot })
     try {
       if (isGodotProject) {
         // Use Godot-specific indexing
-        const result = await apiClient.initializeGodotCodeGraph(switchedProjectRoot || effectivePath)
+        const projectPath = switchedProjectRoot || effectivePath
+        console.log('Calling initializeGodotCodeGraph with:', projectPath)
+        const result = await apiClient.initializeGodotCodeGraph(projectPath)
+        console.log('Godot index result:', result)
         setSyncMessage(`Indexed ${result.file_count} files with ${result.symbol_count} symbols in ${result.duration_ms}ms`)
         setIsSyncing(false)
         await queryClient.invalidateQueries({ queryKey: ['codegraph-status', currentProjectId] })
@@ -158,6 +162,7 @@ function CodeGraph() {
       } else {
         // Use generic CodeGraph sync
         const result = await apiClient.syncCodeGraph(effectivePath)
+        console.log('CodeGraph sync result:', result)
         // Save codeGraphPath if not set
         if (result.success && !switchedProjectRoot) {
           try {
@@ -179,7 +184,7 @@ function CodeGraph() {
     } catch (error) {
       console.error('CodeGraph sync failed:', error)
       setIsSyncing(false)
-      setSyncMessage('Sync failed')
+      setSyncMessage(`Sync failed: ${error instanceof Error ? error.message : String(error)}`)
       setTimeout(() => setSyncMessage(''), 3000)
     }
   }

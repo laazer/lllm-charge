@@ -368,6 +368,7 @@ class ApiClient {
     return this.request('/codegraph/switch', {
       method: 'POST',
       body: JSON.stringify({
+        projectId: options.projectId,
         project_path: options.projectPath
       }),
     })
