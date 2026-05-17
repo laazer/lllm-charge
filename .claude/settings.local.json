@@ -48,7 +48,9 @@
       "Bash(curl -s \"http://localhost:7891/api/specs\")",
       "Bash(curl -s \"http://localhost:7891/api/agents\")",
       "Bash(curl -s \"http://localhost:7891/api/workflows\")",
-      "Bash(curl -v http://localhost:7891/api/projects/)"
+      "Bash(curl -v http://localhost:7891/api/projects/)",
+      "Bash(curl -X POST http://localhost:7891/api/specs/skills/spec-cleanup/scan -H 'Content-Type: application/json' -d '{\"dryRun\": true}')",
+      "Bash(curl -s http://localhost:7891/mcp/tools)"
     ],
     "deny": [],
     "ask": []

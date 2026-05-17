@@ -463,14 +463,14 @@ class ApiClient {
 
   // Spec Cleanup Skill API
   async scanSpecComments(): Promise<SpecCleanupScanResult> {
-    return this.request<SpecCleanupScanResult>('/skills/spec-cleanup/scan', {
+    return this.request<SpecCleanupScanResult>('/specs/skills/spec-cleanup/scan', {
       method: 'POST',
       body: JSON.stringify({ dryRun: true }),
     })
   }
 
   async runSpecCleanup(dryRun: boolean = false): Promise<SpecCleanupRunResult> {
-    return this.request<SpecCleanupRunResult>('/skills/spec-cleanup/run', {
+    return this.request<SpecCleanupRunResult>('/specs/skills/spec-cleanup/run', {
       method: 'POST',
       body: JSON.stringify({ dryRun }),
     })
