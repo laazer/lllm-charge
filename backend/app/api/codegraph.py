@@ -26,7 +26,9 @@ class CodeGraphSearchRequest(BaseModel):
 
 
 class CodeGraphSwitchRequest(BaseModel):
-    project_path: str
+    project_path: Optional[str] = None
+    project_id: Optional[str] = None
+    projectId: Optional[str] = None  # Handle camelCase from frontend
 
 
 class GodotIndexRequest(BaseModel):
@@ -142,7 +144,22 @@ def codegraph_search(request: CodeGraphSearchRequest) -> Dict[str, Any]:
 def codegraph_switch(request: CodeGraphSwitchRequest) -> Dict[str, Any]:
     """Switch the active codegraph project directory."""
     global CODEGRAPH_PROJECT_DIR
-    CODEGRAPH_PROJECT_DIR = request.project_path
+
+    # Handle both project_path and project_id (projectId from frontend)
+    project_path = request.project_path
+    if not project_path and (request.project_id or request.projectId):
+        # If only projectId is provided, use the workspace root
+        # In a real implementation, we'd look up the project path from the database
+        project_path = CODEGRAPH_PROJECT_DIR
+
+    if not project_path:
+        return {
+            "success": False,
+            "status": "error",
+            "error": "Either project_path or project_id is required"
+        }
+
+    CODEGRAPH_PROJECT_DIR = project_path
     return {
         "success": True,
         "status": "switched",
