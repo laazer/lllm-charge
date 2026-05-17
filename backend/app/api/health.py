@@ -120,22 +120,83 @@ class SetupDefaultsRequest(BaseModel):
     overwriteExisting: Optional[bool] = False
 
 
+def _create_default_agents(db: Session, overwrite: bool = False) -> int:
+    """Create default agents in the database."""
+    from app.database.models.agents import Agent, AgentStatus
+    import uuid
+
+    default_agents = [
+        {
+            "name": "Code Analyzer",
+            "description": "Analyzes code for patterns, issues, and optimization opportunities",
+            "primary_role": "analyst"
+        },
+        {
+            "name": "Documentation Assistant",
+            "description": "Helps create, maintain, and improve project documentation",
+            "primary_role": "documentation"
+        },
+        {
+            "name": "Refactoring Specialist",
+            "description": "Suggests and implements code refactoring improvements",
+            "primary_role": "architect"
+        },
+        {
+            "name": "Testing Coordinator",
+            "description": "Manages test creation, execution, and coverage analysis",
+            "primary_role": "qa"
+        }
+    ]
+
+    created = 0
+    for agent_data in default_agents:
+        existing = db.query(Agent).filter(Agent.name == agent_data["name"]).first()
+        if existing and not overwrite:
+            continue
+
+        if existing and overwrite:
+            db.delete(existing)
+
+        agent = Agent(
+            id=str(uuid.uuid4()),
+            name=agent_data["name"],
+            description=agent_data["description"],
+            primary_role=agent_data["primary_role"],
+            status=AgentStatus.ACTIVE.value,
+            capabilities={},
+            config={}
+        )
+        db.add(agent)
+        created += 1
+
+    db.commit()
+    return created
+
+
 @api_router.post("/api/setup/defaults")
-def setup_defaults(request: SetupDefaultsRequest):
+def setup_defaults(request: SetupDefaultsRequest, db: Session = Depends(get_db)):
     """Load default agents, skills, and specs from the backend defaults."""
     loaded = []
+    created = 0
 
     if request.loadAgents:
-        loaded.append("default_agents")
+        created += _create_default_agents(db, request.overwriteExisting or False)
+        if created > 0:
+            loaded.append("default_agents")
+
     if request.loadSkills:
+        # Skills loading - placeholder for now
         loaded.append("default_skills")
+
     if request.loadSpecs:
+        # Specs loading - placeholder for now
         loaded.append("default_specs")
 
     return {
         "success": True,
-        "message": f"Loaded {len(loaded)} default items: {', '.join(loaded) if loaded else 'none'}",
+        "message": f"Loaded {len(loaded)} default items: {', '.join(loaded) if loaded else 'none'}. Created {created} agents.",
         "baseUrl": "http://localhost:7891",
         "projectId": request.projectId or "default",
-        "loaded": loaded
+        "loaded": loaded,
+        "created": created
     }
