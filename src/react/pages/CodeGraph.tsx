@@ -78,6 +78,7 @@ function CodeGraph() {
   })
 
   const isGodotProject = currentProject?.type === 'game'
+  console.log('CodeGraph component state:', { currentProjectId, currentProject, isGodotProject })
 
   // Listen for CodeGraph sync WebSocket events
   useEffect(() => {
@@ -192,14 +193,19 @@ function CodeGraph() {
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
     setIsSearching(true)
+    console.log('handleSearch started', { searchQuery, isGodotProject, currentProjectId })
     try {
       if (isGodotProject) {
         // Use Godot-specific search
+        console.log('Searching Godot symbols with query:', searchQuery)
         const results = await apiClient.searchGodotCodeGraph(searchQuery, kindFilter !== 'all' ? kindFilter : undefined, 50)
+        console.log('Godot search results:', results)
         setSearchResults(results as any[])
       } else {
         // Use generic CodeGraph search
+        console.log('Searching CodeGraph with query:', searchQuery)
         const results = await apiClient.searchCodeGraph(searchQuery, kindFilter !== 'all' ? kindFilter : undefined, 50)
+        console.log('CodeGraph search results:', results)
         setSearchResults(results)
       }
       setSelectedSymbolId(null)
@@ -230,8 +236,10 @@ function CodeGraph() {
     )
   }
 
+  // Handle both CodeGraphStatus and GodotCodeGraphStatus formats
   const nodeKindEntries = Object.entries(status?.nodesByKind || {}).sort((a, b) => b[1] - a[1])
   const availableKinds = nodeKindEntries.map(([kind]) => kind)
+  const isIndexAvailable = isGodotProject ? (status as any)?.has_index : status?.isAvailable
 
   return (
     <div className="space-y-6">
@@ -345,12 +353,12 @@ function CodeGraph() {
       </div>
 
       {/* Status Cards */}
-      {status?.isAvailable && (
+      {isIndexAvailable && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatusCard title="Files Indexed" value={status.filesIndexed} status="info" description="Source files analyzed" icon={DocumentIcon} />
-          <StatusCard title="Total Symbols" value={status.totalNodes} status="success" description="Code symbols indexed" icon={CodeBracketIcon} />
-          <StatusCard title="Relationships" value={status.totalEdges} status="info" description="Symbol connections" icon={ArrowsRightLeftIcon} />
-          <StatusCard title="Database" value={status.isAvailable ? 'Active' : 'Offline'} status={status.isAvailable ? 'success' : 'error'} description="CodeGraph status" icon={CircleStackIcon} />
+          <StatusCard title="Files Indexed" value={isGodotProject ? (status as any)?.file_count : status?.filesIndexed} status="info" description="Source files analyzed" icon={DocumentIcon} />
+          <StatusCard title="Total Symbols" value={isGodotProject ? (status as any)?.symbol_count : status?.totalNodes} status="success" description="Code symbols indexed" icon={CodeBracketIcon} />
+          <StatusCard title="Relationships" value={isGodotProject ? '-' : status?.totalEdges} status="info" description={isGodotProject ? "Not available for GDScript" : "Symbol connections"} icon={ArrowsRightLeftIcon} />
+          <StatusCard title="Index Status" value={isIndexAvailable ? 'Active' : 'Offline'} status={isIndexAvailable ? 'success' : 'error'} description={isGodotProject ? "Godot index" : "CodeGraph status"} icon={CircleStackIcon} />
         </div>
       )}
 
