@@ -271,10 +271,11 @@ const SkillsSection: React.FC = () => {
 
   // Fetch skills (stored as specs with special tags)
   const { data: allSpecs = [], isLoading, error } = useQuery({
-    queryKey: ['skills'],
+    queryKey: ['skills', currentProjectId],
     queryFn: async () => {
       const specs = await apiClient.getSpecs()
-      return specs.filter(isSkillSpec)
+      // Filter for skills from the current project
+      return specs.filter(spec => isSkillSpec(spec) && spec.projectId === currentProjectId)
     },
     refetchInterval: 30000,
   })
@@ -299,7 +300,8 @@ const SkillsSection: React.FC = () => {
         loadSpecs: false,
         overwriteExisting: false,
       })
-      window.location.reload()
+      // Refetch skills without page reload
+      await queryClient.invalidateQueries({ queryKey: ['skills'] })
     } catch (loadError) {
       console.error('Failed to load default skills:', loadError)
     }
