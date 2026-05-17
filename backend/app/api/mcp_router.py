@@ -18,6 +18,14 @@ from app.mcp.tools.filesystem import handle_read_file, handle_write_file, handle
 from app.mcp.tools.hybrid_reasoning import handle_hybrid_reasoning
 from app.mcp.tools.workflow import handle_get_workflow, handle_run_workflow
 from app.mcp.tools.agents import handle_list_agents, handle_spawn_agent
+from app.mcp.tools.analysis import (
+    handle_analyze_react_component,
+    handle_analyze_django_models,
+    handle_analyze_fastapi_routes,
+    handle_get_react_project_health,
+    handle_scaffold_react_component,
+    handle_check_django_security,
+)
 
 router = APIRouter(tags=["mcp"])
 
@@ -116,6 +124,74 @@ _registry.register(
         "required": ["name"],
     },
     handle_spawn_agent,
+)
+
+_registry.register(
+    "analyze_react_component",
+    "Analyze a React component for best practices and potential issues",
+    {
+        "type": "object",
+        "properties": {
+            "component_name": {"type": "string"},
+            "file_path": {"type": "string"},
+        },
+        "required": ["component_name"],
+    },
+    handle_analyze_react_component,
+)
+
+_registry.register(
+    "analyze_django_models",
+    "Analyze Django models for schema issues and optimization opportunities",
+    {
+        "type": "object",
+        "properties": {"app_name": {"type": "string"}},
+    },
+    handle_analyze_django_models,
+)
+
+_registry.register(
+    "analyze_fastapi_routes",
+    "Analyze FastAPI routes for security and performance issues",
+    {
+        "type": "object",
+        "properties": {},
+    },
+    handle_analyze_fastapi_routes,
+)
+
+_registry.register(
+    "get_react_project_health",
+    "Get comprehensive health metrics for a React project",
+    {
+        "type": "object",
+        "properties": {},
+    },
+    handle_get_react_project_health,
+)
+
+_registry.register(
+    "scaffold_react_component",
+    "Generate scaffolding for a new React component with boilerplate",
+    {
+        "type": "object",
+        "properties": {
+            "component_name": {"type": "string"},
+            "component_type": {"type": "string", "enum": ["functional", "class"]},
+        },
+        "required": ["component_name"],
+    },
+    handle_scaffold_react_component,
+)
+
+_registry.register(
+    "check_django_security",
+    "Check Django project configuration for security best practices",
+    {
+        "type": "object",
+        "properties": {},
+    },
+    handle_check_django_security,
 )
 
 _executor = ToolExecutor(_registry)

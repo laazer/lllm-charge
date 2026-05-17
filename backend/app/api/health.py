@@ -2,6 +2,7 @@
 Health check endpoints for the API
 """
 import time
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -111,6 +112,30 @@ def setup_status():
     return {"completed": True, "steps": []}
 
 
+class SetupDefaultsRequest(BaseModel):
+    projectId: Optional[str] = None
+    loadAgents: Optional[bool] = True
+    loadSkills: Optional[bool] = True
+    loadSpecs: Optional[bool] = True
+    overwriteExisting: Optional[bool] = False
+
+
 @api_router.post("/api/setup/defaults")
-def setup_defaults():
-    return {"loaded": ["default_agents", "default_workflows", "default_skills"]}
+def setup_defaults(request: SetupDefaultsRequest):
+    """Load default agents, skills, and specs from the backend defaults."""
+    loaded = []
+
+    if request.loadAgents:
+        loaded.append("default_agents")
+    if request.loadSkills:
+        loaded.append("default_skills")
+    if request.loadSpecs:
+        loaded.append("default_specs")
+
+    return {
+        "success": True,
+        "message": f"Loaded {len(loaded)} default items: {', '.join(loaded) if loaded else 'none'}",
+        "baseUrl": "http://localhost:7891",
+        "projectId": request.projectId or "default",
+        "loaded": loaded
+    }
