@@ -11,12 +11,13 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline'
 import { apiClient } from '../lib/api-client'
-import type { CodeGraphSymbol, CodeGraphRelation } from '../lib/api-client'
+import type { CodeGraphSymbol, CodeGraphRelation, GodotSymbol } from '../lib/api-client'
 import { StatusCard } from '../components/ui/Cards/StatusCard'
 import { KindBadge } from '../components/ui/CodeGraph/KindBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { useProject } from '../store/project-store'
 import { useWebSocket } from '../store/websocket-store'
+import type { Project } from '../lib/api-client'
 
 function RelationList({ title, relations, onSymbolClick }: {
   title: string
@@ -65,6 +66,19 @@ function CodeGraph() {
   const { currentProjectId } = useProject()
   const { lastMessage } = useWebSocket()
 
+  // Fetch current project to determine if it's a Godot project
+  const { data: currentProject } = useQuery({
+    queryKey: ['project', currentProjectId],
+    queryFn: async () => {
+      if (!currentProjectId) return null
+      const projects = await apiClient.getProjects()
+      return projects.find(p => p.id === currentProjectId) || null
+    },
+    enabled: !!currentProjectId,
+  })
+
+  const isGodotProject = currentProject?.type === 'game'
+
   // Listen for CodeGraph sync WebSocket events
   useEffect(() => {
     if (!lastMessage || (lastMessage as any).type !== 'codegraph_sync') return
@@ -101,9 +115,10 @@ function CodeGraph() {
   const isBackendReady = switchQuery.isSuccess
 
   // Step 2: Fetch status only AFTER the switch query succeeds
+  // For Godot projects, use the Godot-specific endpoint
   const { data: status, isLoading: statusLoading } = useQuery({
     queryKey: ['codegraph-status', currentProjectId],
-    queryFn: () => apiClient.getCodeGraphStatus(),
+    queryFn: () => isGodotProject ? apiClient.getGodotCodeGraphStatus() : apiClient.getCodeGraphStatus(),
     enabled: isBackendReady,
     refetchOnWindowFocus: false,
   })
@@ -131,25 +146,35 @@ function CodeGraph() {
   const handleSync = async () => {
     if (!effectivePath) return
     setIsSyncing(true)
-    setSyncMessage('Starting sync...')
+    setSyncMessage(isGodotProject ? 'Initializing Godot index...' : 'Starting sync...')
     try {
-      const result = await apiClient.syncCodeGraph(effectivePath)
-      // Save codeGraphPath if not set
-      if (result.success && !switchedProjectRoot) {
-        try {
-          await apiClient.updateProject(currentProjectId, { codeGraphPath: effectivePath })
-          queryClient.invalidateQueries({ queryKey: ['projects'] })
-        } catch {
-          // Non-critical
-        }
-      }
-      // For async (202) response, isSyncing stays true until WebSocket event
-      // For sync (200) response (fallback), handle immediately
-      if (result.status !== 'indexing') {
+      if (isGodotProject) {
+        // Use Godot-specific indexing
+        const result = await apiClient.initializeGodotCodeGraph(switchedProjectRoot || effectivePath)
+        setSyncMessage(`Indexed ${result.file_count} files with ${result.symbol_count} symbols in ${result.duration_ms}ms`)
         setIsSyncing(false)
-        setSyncMessage('')
-        await queryClient.invalidateQueries({ queryKey: ['codegraph-switch', currentProjectId] })
         await queryClient.invalidateQueries({ queryKey: ['codegraph-status', currentProjectId] })
+        setTimeout(() => setSyncMessage(''), 3000)
+      } else {
+        // Use generic CodeGraph sync
+        const result = await apiClient.syncCodeGraph(effectivePath)
+        // Save codeGraphPath if not set
+        if (result.success && !switchedProjectRoot) {
+          try {
+            await apiClient.updateProject(currentProjectId, { codeGraphPath: effectivePath })
+            queryClient.invalidateQueries({ queryKey: ['projects'] })
+          } catch {
+            // Non-critical
+          }
+        }
+        // For async (202) response, isSyncing stays true until WebSocket event
+        // For sync (200) response (fallback), handle immediately
+        if (result.status !== 'indexing') {
+          setIsSyncing(false)
+          setSyncMessage('')
+          await queryClient.invalidateQueries({ queryKey: ['codegraph-switch', currentProjectId] })
+          await queryClient.invalidateQueries({ queryKey: ['codegraph-status', currentProjectId] })
+        }
       }
     } catch (error) {
       console.error('CodeGraph sync failed:', error)
@@ -163,8 +188,15 @@ function CodeGraph() {
     if (!searchQuery.trim()) return
     setIsSearching(true)
     try {
-      const results = await apiClient.searchCodeGraph(searchQuery, kindFilter !== 'all' ? kindFilter : undefined, 50)
-      setSearchResults(results)
+      if (isGodotProject) {
+        // Use Godot-specific search
+        const results = await apiClient.searchGodotCodeGraph(searchQuery, kindFilter !== 'all' ? kindFilter : undefined, 50)
+        setSearchResults(results as any[])
+      } else {
+        // Use generic CodeGraph search
+        const results = await apiClient.searchCodeGraph(searchQuery, kindFilter !== 'all' ? kindFilter : undefined, 50)
+        setSearchResults(results)
+      }
       setSelectedSymbolId(null)
     } catch (error) {
       console.error('CodeGraph search error:', error)
@@ -235,7 +267,7 @@ function CodeGraph() {
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors whitespace-nowrap"
               >
                 <ArrowPathIcon className="w-4 h-4" />
-                {switchedProjectRoot ? 'Sync Index' : 'Initialize'}
+                {switchedProjectRoot ? (isGodotProject ? 'Re-Index Godot Project' : 'Sync Index') : (isGodotProject ? 'Initialize Godot Index' : 'Initialize')}
               </button>
             )}
           </div>

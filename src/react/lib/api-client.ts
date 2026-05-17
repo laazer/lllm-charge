@@ -392,6 +392,25 @@ class ApiClient {
     return this.request<CodeGraphRelation[]>(`/codegraph/callees/${encodeURIComponent(id)}`)
   }
 
+  // Godot-specific CodeGraph API (for GDScript projects like Blobert)
+  async getGodotCodeGraphStatus(): Promise<GodotCodeGraphStatus> {
+    return this.request<GodotCodeGraphStatus>('/codegraph/godot/status')
+  }
+
+  async initializeGodotCodeGraph(projectPath?: string): Promise<GodotIndexResult> {
+    return this.request<GodotIndexResult>('/codegraph/godot/index', {
+      method: 'POST',
+      body: JSON.stringify({ project_path: projectPath || '' })
+    })
+  }
+
+  async searchGodotCodeGraph(query: string, symbolType?: string, limit?: number): Promise<GodotSymbol[]> {
+    return this.request<GodotSymbol[]>('/codegraph/godot/search', {
+      method: 'POST',
+      body: JSON.stringify({ query, symbol_type: symbolType, limit: limit || 20 })
+    })
+  }
+
   async getCodeGraphImpact(id: string, depth?: number): Promise<CodeGraphImpact> {
     const params = depth ? `?depth=${depth}` : ''
     return this.request<CodeGraphImpact>(`/codegraph/impact/${encodeURIComponent(id)}${params}`)
@@ -659,6 +678,32 @@ export interface CodeGraphImpact {
   totalAffected: number
   maxDepthReached: boolean
   analyzedDepth: number
+}
+
+// Godot-specific CodeGraph types
+export interface GodotCodeGraphStatus {
+  has_index: boolean
+  project_root: string
+  indexed_at?: string
+  file_count?: number
+  symbol_count?: number
+}
+
+export interface GodotIndexResult {
+  status: string
+  project_path: string
+  file_count: number
+  symbol_count: number
+  duration_ms: number
+}
+
+export interface GodotSymbol {
+  name: string
+  symbol_type: string
+  file_path: string
+  line_number: number
+  class_name?: string
+  description?: string
 }
 
 export interface SpecCleanupScanResult {

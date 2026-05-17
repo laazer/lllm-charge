@@ -55,7 +55,8 @@
       "Bash(curl -s -w \"[%{http_code}]\\\\n\" http://localhost:7891/api/agents/)",
       "Bash(curl -s -w \"[%{http_code}]\\\\n\" http://localhost:7891/api/specs/)",
       "Bash(curl -s -w \"[%{http_code}]\\\\n\" http://localhost:7891/api/projects/)",
-      "Bash(curl -s http://localhost:7891/api/specs/skills/spec-cleanup/scan)"
+      "Bash(curl -s http://localhost:7891/api/specs/skills/spec-cleanup/scan)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
     ],
     "deny": [],
     "ask": []
