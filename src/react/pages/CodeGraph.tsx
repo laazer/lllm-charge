@@ -218,7 +218,11 @@ function CodeGraph() {
   }
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter') handleSearch()
+    console.log('handleKeyPress:', event.key)
+    if (event.key === 'Enter') {
+      console.log('Enter pressed, calling handleSearch')
+      handleSearch()
+    }
   }
 
   const handleSymbolClick = (symbolId: string) => {
@@ -315,7 +319,10 @@ function CodeGraph() {
                 type="text"
                 placeholder="Search for symbols (e.g., Router, handleRequest)..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  console.log('Search input changed:', e.target.value)
+                  setSearchQuery(e.target.value)
+                }}
                 onKeyPress={handleKeyPress}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -339,7 +346,10 @@ function CodeGraph() {
           </div>
           <div>
             <button
-              onClick={handleSearch}
+              onClick={() => {
+                console.log('Search button clicked, searchQuery:', searchQuery)
+                handleSearch()
+              }}
               disabled={!searchQuery.trim() || isSearching}
               className="w-full px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300
                        disabled:cursor-not-allowed text-white rounded-lg font-medium
@@ -401,23 +411,25 @@ function CodeGraph() {
               Results ({searchResults.length})
             </h2>
             <div className="space-y-2 max-h-[600px] overflow-y-auto">
-              {searchResults.map((symbol) => (
+              {searchResults.map((symbol) => {
+                const symbolId = isGodotProject ? `${(symbol as any).file_path}:${(symbol as any).line}` : (symbol as any).id
+                return (
                 <button
-                  key={symbol.id}
-                  onClick={() => handleSymbolClick(symbol.id)}
+                  key={symbolId}
+                  onClick={() => handleSymbolClick(symbolId)}
                   className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                    selectedSymbolId === symbol.id
+                    selectedSymbolId === symbolId
                       ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                       : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <KindBadge kind={symbol.kind} />
+                    <KindBadge kind={isGodotProject ? (symbol as any).symbol_type : (symbol as any).kind} />
                     <span className="font-medium text-gray-900 dark:text-white truncate">{symbol.name}</span>
                     <ChevronRightIcon className="w-4 h-4 text-gray-400 ml-auto flex-shrink-0" />
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {symbol.file}:{symbol.line}
+                    {isGodotProject ? (symbol as any).file_path : (symbol as any).file}:{symbol.line}
                   </div>
                   {symbol.signature && (
                     <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 font-mono truncate">
@@ -425,64 +437,75 @@ function CodeGraph() {
                     </div>
                   )}
                 </button>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
 
         {/* Symbol Detail Panel */}
-        {selectedSymbolId && symbolDetail && (
+        {selectedSymbolId && (symbolDetail || (isGodotProject && searchResults.length > 0)) && (
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <KindBadge kind={symbolDetail.kind} />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{symbolDetail.name}</h2>
-              </div>
-              <button
-                onClick={() => setSelectedSymbolId(null)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <ArrowUturnLeftIcon className="w-4 h-4" />
-              </button>
-            </div>
+            {(() => {
+              // For Godot projects, use the search result; for CodeGraph, use the detail query
+              const detail = isGodotProject
+                ? searchResults.find(s => {
+                    const symbolId = `${(s as any).file_path}:${(s as any).line}`
+                    return symbolId === selectedSymbolId
+                  })
+                : symbolDetail
 
-            <div className="space-y-3 mb-6">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                <span className="font-medium">File:</span> {symbolDetail.file}:{symbolDetail.line}
-                {symbolDetail.end_line && ` - ${symbolDetail.end_line}`}
-              </div>
-              {symbolDetail.signature && (
-                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 font-mono text-sm text-gray-800 dark:text-gray-200 overflow-x-auto">
-                  {symbolDetail.signature}
+              if (!detail) return null
+
+              return (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <KindBadge kind={isGodotProject ? (detail as any).symbol_type : (detail as any).kind} />
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{(detail as any).name}</h2>
+                    </div>
+                    <button
+                      onClick={() => setSelectedSymbolId(null)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <ArrowUturnLeftIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                <div className="space-y-3 mb-6">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <span className="font-medium">File:</span> {isGodotProject ? (detail as any).file_path : (detail as any).file}:{(detail as any).line}
+                    {(detail as any).end_line && ` - ${(detail as any).end_line}`}
+                  </div>
+                  {(detail as any).signature && (
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 font-mono text-sm text-gray-800 dark:text-gray-200 overflow-x-auto">
+                      {(detail as any).signature}
+                    </div>
+                  )}
+                  {(detail as any).docstring && (
+                    <div className="text-sm text-gray-600 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                      {(detail as any).docstring}
+                    </div>
+                  )}
                 </div>
-              )}
-              {symbolDetail.docstring && (
-                <div className="text-sm text-gray-600 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                  {symbolDetail.docstring}
-                </div>
-              )}
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <RelationList title="Callers (who calls this)" relations={callers} onSymbolClick={handleSymbolClick} />
-              <RelationList title="Callees (what this calls)" relations={callees} onSymbolClick={handleSymbolClick} />
-            </div>
-
-            {/* Relationships from symbol detail */}
-            {symbolDetail.relationships && (
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <RelationList
-                  title="Incoming Relationships"
-                  relations={symbolDetail.relationships.incoming || []}
-                  onSymbolClick={handleSymbolClick}
-                />
-                <RelationList
-                  title="Outgoing Relationships"
-                  relations={symbolDetail.relationships.outgoing || []}
-                  onSymbolClick={handleSymbolClick}
-                />
-              </div>
-            )}
+                {!isGodotProject && (detail as any).relationships && (
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <RelationList
+                        title="Incoming Relationships"
+                        relations={(detail as any).relationships.incoming || []}
+                        onSymbolClick={handleSymbolClick}
+                      />
+                      <RelationList
+                        title="Outgoing Relationships"
+                        relations={(detail as any).relationships.outgoing || []}
+                        onSymbolClick={handleSymbolClick}
+                      />
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         )}
       </div>

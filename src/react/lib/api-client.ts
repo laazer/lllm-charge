@@ -406,10 +406,11 @@ class ApiClient {
   }
 
   async searchGodotCodeGraph(query: string, symbolType?: string, limit?: number): Promise<GodotSymbol[]> {
-    return this.request<GodotSymbol[]>('/codegraph/godot/search', {
+    const response = await this.request<{ status: string; results: GodotSymbol[] }>('/codegraph/godot/search', {
       method: 'POST',
       body: JSON.stringify({ query, symbol_type: symbolType, limit: limit || 20 })
     })
+    return response.results || []
   }
 
   async getCodeGraphImpact(id: string, depth?: number): Promise<CodeGraphImpact> {
