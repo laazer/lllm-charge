@@ -367,7 +367,9 @@ class ApiClient {
   async switchCodeGraphProject(options: { projectId?: string; projectPath?: string }): Promise<CodeGraphStatus & { success: boolean; projectRoot: string }> {
     return this.request('/codegraph/switch', {
       method: 'POST',
-      body: JSON.stringify(options),
+      body: JSON.stringify({
+        project_path: options.projectPath
+      }),
     })
   }
 

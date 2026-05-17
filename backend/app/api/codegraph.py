@@ -144,9 +144,12 @@ def codegraph_switch(request: CodeGraphSwitchRequest) -> Dict[str, Any]:
     global CODEGRAPH_PROJECT_DIR
     CODEGRAPH_PROJECT_DIR = request.project_path
     return {
+        "success": True,
         "status": "switched",
+        "projectRoot": CODEGRAPH_PROJECT_DIR,
         "project_dir": CODEGRAPH_PROJECT_DIR,
         "has_index": _has_index(CODEGRAPH_PROJECT_DIR),
+        "filesIndexed": 0
     }
 
 
