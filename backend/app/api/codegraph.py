@@ -218,11 +218,13 @@ def godot_status() -> Dict[str, Any]:
 @router.post("/godot/index")
 def godot_index(request: GodotIndexRequest) -> Dict[str, Any]:
     """Trigger (re-)indexing of a Godot project and return stats."""
-    indexer = GodotProjectIndexer(request.project_path)
+    # Use provided path or fall back to currently selected project
+    project_path = request.project_path.strip() if request.project_path else CODEGRAPH_PROJECT_DIR
+    indexer = GodotProjectIndexer(project_path)
     result = indexer.index_project()
     return {
         "status": "indexed",
-        "project_path": request.project_path,
+        "project_path": project_path,
         "file_count": result.file_count,
         "symbol_count": result.symbol_count,
         "duration_ms": result.duration_ms,
