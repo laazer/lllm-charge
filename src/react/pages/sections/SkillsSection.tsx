@@ -11,20 +11,11 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline'
 import { apiClient } from '../../lib/api-client'
+import type { Skill } from '../../types'
 import { StatusCard } from '../../components/ui/Cards/StatusCard'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/Modals/Modal'
 import { useProject } from '../../store/project-store'
-
-interface Skill {
-  id: string
-  title: string
-  description?: string
-  category: string
-  tags?: string[]
-  createdAt: string
-  updatedAt: string
-}
 
 const SKILL_CATEGORIES = ['documentation', 'analysis', 'integration', 'optimization', 'automation', 'general'] as const
 
@@ -53,7 +44,7 @@ function SkillEditModal({
   skill: Skill
   isOpen: boolean
   onClose: () => void
-  onSave: (id: string, updates: Record<string, unknown>) => Promise<void>
+  onSave: (id: string, updates: Partial<Skill>) => Promise<void>
 }) {
   const [form, setForm] = useState<SkillEditFormState>(buildEditFormFromSkill(skill))
   const [isSaving, setIsSaving] = useState(false)
@@ -70,18 +61,11 @@ function SkillEditModal({
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0)
 
-      // Ensure category tag is included
-      if (form.category !== 'general' && !parsedTags.includes(form.category)) {
-        parsedTags.push(form.category)
-      }
-      if (!parsedTags.some(tag => tag.includes('skill') || tag.includes('capability'))) {
-        parsedTags.push('skill')
-      }
-
       await onSave(skill.id, {
         title: form.title,
         description: form.description,
-        data: { tags: parsedTags },
+        category: form.category,
+        tags: parsedTags,
       })
       onClose()
     } catch (error) {
@@ -237,22 +221,6 @@ function getCategoryColor(category: string): string {
   return CATEGORY_COLORS[category] || 'gray'
 }
 
-function extractCategoryFromTags(tags?: string[]): string {
-  return tags?.find(tag =>
-    ['documentation', 'analysis', 'integration', 'optimization', 'automation'].includes(tag)
-  ) || 'general'
-}
-
-function isSkillSpec(spec: { tags?: string[] }): boolean {
-  return spec.tags?.some(tag =>
-    tag.includes('skill') ||
-    tag.includes('capability') ||
-    tag.includes('devdocs') ||
-    tag.includes('analysis') ||
-    tag.includes('cost-optimization')
-  ) ?? false
-}
-
 const SkillsSection: React.FC = () => {
   const queryClient = useQueryClient()
   const { currentProjectId } = useProject()
@@ -269,27 +237,14 @@ const SkillsSection: React.FC = () => {
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null)
   const [deletingSkill, setDeletingSkill] = useState<Skill | null>(null)
 
-  // Fetch skills (stored as specs with special tags)
-  // Skills are global and not tied to a specific project
-  const { data: allSpecs = [], isLoading, error } = useQuery({
+  // Fetch skills from the Skills API
+  const { data: skills = [], isLoading, error } = useQuery({
     queryKey: ['skills'],
     queryFn: async () => {
-      const specs = await apiClient.getSpecs()
-      return specs.filter(isSkillSpec)
+      return await apiClient.getSkills()
     },
     refetchInterval: 30000,
   })
-
-  // Transform specs into skills format
-  const skills: Skill[] = allSpecs.map(spec => ({
-    id: spec.id,
-    title: spec.title,
-    description: spec.description,
-    tags: spec.tags,
-    createdAt: spec.createdAt,
-    updatedAt: spec.updatedAt,
-    category: extractCategoryFromTags(spec.tags),
-  }))
 
   // Load default skills if none exist
   const loadDefaultSkills = async () => {
@@ -350,14 +305,14 @@ const SkillsSection: React.FC = () => {
   const allFilteredSelected = filteredSkills.length > 0 && filteredSkills.every(skill => selectedSkillIds.has(skill.id))
 
   // Edit handler
-  const handleSaveSkill = async (skillId: string, updates: Record<string, unknown>) => {
-    await apiClient.updateSpec(skillId, updates)
+  const handleSaveSkill = async (skillId: string, updates: Partial<Skill>) => {
+    await apiClient.updateSkill(skillId, updates)
     await queryClient.invalidateQueries({ queryKey: ['skills'] })
   }
 
   // Delete handler
   const handleDeleteSkill = async (skillId: string) => {
-    await apiClient.deleteSpec(skillId)
+    await apiClient.deleteSkill(skillId)
     selectedSkillIds.delete(skillId)
     setSelectedSkillIds(new Set(selectedSkillIds))
     await queryClient.invalidateQueries({ queryKey: ['skills'] })
@@ -371,6 +326,7 @@ const SkillsSection: React.FC = () => {
     try {
       const selectedSkills = skills.filter(skill => selectedSkillIds.has(skill.id))
 
+      // Create specs from selected skills in the current project
       const createPromises = selectedSkills.map(skill =>
         apiClient.createSpec({
           title: skill.title,
@@ -511,207 +467,132 @@ const SkillsSection: React.FC = () => {
       {/* Skills Grid */}
       {filteredSkills.length === 0 ? (
         <div className="text-center py-12">
-          <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            {skills.length === 0 ? 'No skills found' : 'No skills match your criteria'}
-          </h3>
+          <AcademicCapIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No skills found</h3>
           <p className="text-gray-500 dark:text-gray-400">
-            {skills.length === 0
-              ? 'Load default skills to get started with pre-built capabilities.'
-              : 'Try adjusting your search terms or category filter.'
-            }
+            {searchTerm || categoryFilter !== 'all'
+              ? 'Try adjusting your search or filter criteria'
+              : 'Get started by loading default skills'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredSkills.map(skill => {
-            const isSelected = selectedSkillIds.has(skill.id)
-            const isExpanded = expandedSkillId === skill.id
-            const categoryColor = getCategoryColor(skill.category)
-
-            return (
-              <div
-                key={skill.id}
-                className={`bg-white dark:bg-gray-800 rounded-lg shadow border-2 transition-all duration-200
-                  ${isSelected
-                    ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
-                `}
-              >
-                <div className="p-6">
-                  {/* Top row: checkbox + header + actions */}
-                  <div className="flex items-start gap-3 mb-4">
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => toggleSkillSelection(skill.id)}
-                      className={`mt-1 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
-                        ${isSelected
-                          ? 'bg-blue-600 border-blue-600 text-white'
-                          : 'border-gray-300 dark:border-gray-500 hover:border-blue-400'}
-                      `}
-                      aria-label={isSelected ? `Deselect ${skill.title}` : `Select ${skill.title}`}
-                    >
-                      {isSelected && <CheckIcon className="h-3 w-3" />}
-                    </button>
-
-                    {/* Skill info */}
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={() => setExpandedSkillId(isExpanded ? null : skill.id)}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-lg bg-${categoryColor}-100 dark:bg-${categoryColor}-800/20`}>
-                          <AcademicCapIcon className={`h-6 w-6 text-${categoryColor}-600 dark:text-${categoryColor}-400`} />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                            {skill.title}
-                          </h3>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize mt-1
-                            bg-${categoryColor}-100 text-${categoryColor}-800 dark:bg-${categoryColor}-800/20 dark:text-${categoryColor}-400`}>
-                            {skill.category}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex items-center space-x-1 flex-shrink-0">
-                      <button
-                        onClick={event => { event.stopPropagation(); setEditingSkill(skill) }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                        aria-label={`Edit ${skill.title}`}
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={event => { event.stopPropagation(); setDeletingSkill(skill) }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        aria-label={`Delete ${skill.title}`}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredSkills.map(skill => (
+            <div
+              key={skill.id}
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-lg
+                       transition-shadow dark:bg-gray-800 cursor-pointer"
+              onClick={() => setExpandedSkillId(expandedSkillId === skill.id ? null : skill.id)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedSkillIds.has(skill.id)}
+                      onChange={() => toggleSkillSelection(skill.id)}
+                      onClick={event => event.stopPropagation()}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                    />
+                    <h3 className="font-semibold text-gray-900 dark:text-white">{skill.title}</h3>
                   </div>
-
-                  {/* Description */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded
+                      ${getCategoryColor(skill.category) === 'blue' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : ''}
+                      ${getCategoryColor(skill.category) === 'purple' ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200' : ''}
+                      ${getCategoryColor(skill.category) === 'green' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : ''}
+                      ${getCategoryColor(skill.category) === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200' : ''}
+                      ${getCategoryColor(skill.category) === 'red' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' : ''}
+                      ${getCategoryColor(skill.category) === 'gray' ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200' : ''}
+                    `}>
+                      {skill.category}
+                    </span>
+                  </div>
                   {skill.description && (
-                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                       {skill.description}
                     </p>
                   )}
-
-                  {/* Tags */}
                   {skill.tags && skill.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {skill.tags.slice(0, 5).map(tag => (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {skill.tags.slice(0, 3).map(tag => (
                         <span
                           key={tag}
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                   bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                          className="inline-block px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-700
+                                   text-gray-700 dark:text-gray-300 rounded"
                         >
                           {tag}
                         </span>
                       ))}
-                      {skill.tags.length > 5 && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          +{skill.tags.length - 5} more
+                      {skill.tags.length > 3 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 py-0.5">
+                          +{skill.tags.length - 3} more
                         </span>
                       )}
                     </div>
                   )}
+                </div>
+                <div className="flex items-center space-x-2 ml-2">
+                  <button
+                    onClick={event => {
+                      event.stopPropagation()
+                      setEditingSkill(skill)
+                    }}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                    title="Edit"
+                  >
+                    <PencilIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  </button>
+                  <button
+                    onClick={event => {
+                      event.stopPropagation()
+                      setDeletingSkill(skill)
+                    }}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                    title="Delete"
+                  >
+                    <TrashIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  </button>
+                </div>
+              </div>
 
-                  {/* Last Updated */}
-                  <div className="flex items-center mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <ClockIcon className="h-4 w-4 text-gray-400" />
-                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                      Updated {new Date(skill.updatedAt).toLocaleDateString()}
-                    </span>
+              {/* Expanded view */}
+              {expandedSkillId === skill.id && (
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-500">
+                    <ClockIcon className="h-3 w-3" />
+                    <span>Created {new Date(skill.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
-
-                {/* Expanded Details */}
-                {isExpanded && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gray-50 dark:bg-gray-700/50">
-                    <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Skill Details</h4>
-
-                    {skill.description && (
-                      <div className="mb-4">
-                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</h5>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {skill.description}
-                        </p>
-                      </div>
-                    )}
-
-                    {skill.tags && skill.tags.length > 0 && (
-                      <div className="mb-4">
-                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</h5>
-                        <div className="flex flex-wrap gap-1">
-                          {skill.tags.map(tag => (
-                            <span
-                              key={tag}
-                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                       bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+              )}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Floating Action Bar for Multi-Select */}
+      {/* Download Button */}
       {selectedSkillIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
-          <div className="flex items-center space-x-4 px-6 py-3 bg-gray-900 dark:bg-gray-700 text-white rounded-xl shadow-2xl">
-            <span className="text-sm font-medium">
-              {selectedSkillIds.size} skill{selectedSkillIds.size > 1 ? 's' : ''} selected
-            </span>
-            <div className="w-px h-6 bg-gray-600" />
-            <button
-              onClick={handleDownloadToProject}
-              disabled={isDownloading}
-              className="flex items-center space-x-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700
-                       disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
-            >
-              <ArrowDownTrayIcon className="h-4 w-4" />
-              <span>{isDownloading ? 'Downloading...' : 'Download to Project'}</span>
-            </button>
-            <button
-              onClick={deselectAll}
-              className="p-1.5 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-              aria-label="Deselect all"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
-          </div>
+        <div className="flex justify-end space-x-3 mt-6">
+          <button
+            onClick={deselectAll}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700
+                     hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+          >
+            Clear Selection
+          </button>
+          <button
+            onClick={handleDownloadToProject}
+            disabled={isDownloading}
+            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700
+                     disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            <span>{isDownloading ? 'Downloading...' : `Download (${selectedSkillIds.size})`}</span>
+          </button>
         </div>
       )}
 
-      {/* Help Section */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <div className="flex items-start space-x-3">
-          <AcademicCapIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-          <div className="text-sm text-blue-800 dark:text-blue-300">
-            <p className="font-medium mb-1">About Skills</p>
-            <p>
-              Skills are modular capabilities that agents can use to perform specific tasks.
-              They provide cost-optimized solutions by enabling local processing and intelligent
-              resource management. Select multiple skills and download them to your current project.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Edit Modal */}
+      {/* Modals */}
       {editingSkill && (
         <SkillEditModal
           skill={editingSkill}
@@ -720,8 +601,6 @@ const SkillsSection: React.FC = () => {
           onSave={handleSaveSkill}
         />
       )}
-
-      {/* Delete Confirm Modal */}
       {deletingSkill && (
         <DeleteConfirmModal
           skillTitle={deletingSkill.title}

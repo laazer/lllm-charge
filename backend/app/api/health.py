@@ -173,6 +173,75 @@ def _create_default_agents(db: Session, overwrite: bool = False) -> int:
     return created
 
 
+def _create_default_skills(db: Session, overwrite: bool = False) -> int:
+    """Create default skills in the database."""
+    from app.database.models.skills import Skill
+    import uuid
+
+    default_skills = [
+        {
+            "title": "Code Analysis",
+            "description": "Analyze code for issues, patterns, and optimization opportunities",
+            "category": "analysis",
+            "tags": ["skill", "analysis", "code"]
+        },
+        {
+            "title": "Documentation Generator",
+            "description": "Generate and maintain project documentation automatically",
+            "category": "documentation",
+            "tags": ["skill", "documentation", "automation"]
+        },
+        {
+            "title": "Test Writer",
+            "description": "Create comprehensive test suites and improve test coverage",
+            "category": "automation",
+            "tags": ["skill", "testing", "automation"]
+        },
+        {
+            "title": "Code Refactorer",
+            "description": "Refactor code for better readability, performance, and maintainability",
+            "category": "optimization",
+            "tags": ["skill", "refactoring", "code"]
+        },
+        {
+            "title": "Security Auditor",
+            "description": "Audit code for security vulnerabilities and best practices",
+            "category": "analysis",
+            "tags": ["skill", "security", "analysis"]
+        },
+        {
+            "title": "Performance Optimizer",
+            "description": "Identify and optimize performance bottlenecks",
+            "category": "optimization",
+            "tags": ["skill", "performance", "optimization"]
+        }
+    ]
+
+    created = 0
+    for skill_data in default_skills:
+        existing = db.query(Skill).filter(Skill.title == skill_data["title"]).first()
+        if existing and not overwrite:
+            continue
+
+        if existing and overwrite:
+            db.delete(existing)
+
+        skill = Skill(
+            id=str(uuid.uuid4()),
+            title=skill_data["title"],
+            description=skill_data["description"],
+            category=skill_data["category"],
+            tags=skill_data["tags"],
+            project_id=None,  # Global skills
+            status="active"
+        )
+        db.add(skill)
+        created += 1
+
+    db.commit()
+    return created
+
+
 @api_router.post("/api/setup/defaults")
 def setup_defaults(request: SetupDefaultsRequest, db: Session = Depends(get_db)):
     """Load default agents, skills, and specs from the backend defaults."""
@@ -180,13 +249,16 @@ def setup_defaults(request: SetupDefaultsRequest, db: Session = Depends(get_db))
     created = 0
 
     if request.loadAgents:
-        created += _create_default_agents(db, request.overwriteExisting or False)
-        if created > 0:
+        agents_created = _create_default_agents(db, request.overwriteExisting or False)
+        created += agents_created
+        if agents_created > 0:
             loaded.append("default_agents")
 
     if request.loadSkills:
-        # Skills loading - placeholder for now
-        loaded.append("default_skills")
+        skills_created = _create_default_skills(db, request.overwriteExisting or False)
+        created += skills_created
+        if skills_created > 0:
+            loaded.append("default_skills")
 
     if request.loadSpecs:
         # Specs loading - placeholder for now
@@ -194,7 +266,7 @@ def setup_defaults(request: SetupDefaultsRequest, db: Session = Depends(get_db))
 
     return {
         "success": True,
-        "message": f"Loaded {len(loaded)} default items: {', '.join(loaded) if loaded else 'none'}. Created {created} agents.",
+        "message": f"Loaded {len(loaded)} default items: {', '.join(loaded) if loaded else 'none'}. Created {created} items.",
         "baseUrl": "http://localhost:7891",
         "projectId": request.projectId or "default",
         "loaded": loaded,

@@ -34,6 +34,18 @@ export interface Agent {
   }
 }
 
+export interface Skill {
+  id: string
+  title: string
+  description?: string
+  category: string
+  tags: string[]
+  projectId?: string | null
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Spec {
   id: string
   title: string

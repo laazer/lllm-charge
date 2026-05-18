@@ -17,7 +17,7 @@ from app.config import settings
 from app.database.database import init_database
 
 # Import API routers
-from app.api import agents, workflows, specs, projects
+from app.api import agents, workflows, specs, projects, skills
 from app.api.cron import router as cron_router
 from app.api.buddies import router as buddies_router
 from app.api.memory import router as memory_router
@@ -108,6 +108,7 @@ app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
 app.include_router(specs.router, prefix="/api/specs", tags=["specs"])
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
+app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
 app.include_router(reasoning_router, tags=["reasoning"])
 app.include_router(cron_router)
 app.include_router(buddies_router)

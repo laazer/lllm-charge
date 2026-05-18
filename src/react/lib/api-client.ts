@@ -1,6 +1,7 @@
 import type {
   Project,
   Agent,
+  Skill,
   Spec,
   Workflow,
   MemoryNote,
@@ -169,6 +170,40 @@ class ApiClient {
 
   async deleteSpec(id: string): Promise<void> {
     return this.request<void>(`/specs/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // Skills API
+  async getSkills(category?: string, projectId?: string): Promise<Skill[]> {
+    const params = new URLSearchParams()
+    if (category) params.append('category', category)
+    if (projectId) params.append('project_id', projectId)
+    const queryString = params.toString() ? `?${params.toString()}` : ''
+    const response = await this.request<{skills: Skill[], total: number}>(`/skills/${queryString}`)
+    return response.skills || []
+  }
+
+  async getSkill(id: string): Promise<Skill> {
+    return this.request<Skill>(`/skills/${id}`)
+  }
+
+  async createSkill(skill: Partial<Skill>): Promise<Skill> {
+    return this.request<Skill>('/skills/', {
+      method: 'POST',
+      body: JSON.stringify(skill),
+    })
+  }
+
+  async updateSkill(id: string, skill: Partial<Skill>): Promise<Skill> {
+    return this.request<Skill>(`/skills/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(skill),
+    })
+  }
+
+  async deleteSkill(id: string): Promise<void> {
+    return this.request<void>(`/skills/${id}`, {
       method: 'DELETE',
     })
   }

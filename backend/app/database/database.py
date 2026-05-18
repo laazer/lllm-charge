@@ -115,6 +115,7 @@ def init_database():
         # Import all models so their tables are registered with Base.metadata
         from app.database.models import agents, workflows, flows, metrics  # noqa: F401
         from app.database.models import main  # noqa: F401 — loads Project, Specification, Note
+        from app.database.models import skills  # noqa: F401 — loads Skill
         import app.cron.models  # noqa: F401 — loads CronJob, CronExecution
         import app.database.models.buddies  # noqa: F401 — loads Buddy, BuddyMessage
         import app.database.models.memory  # noqa: F401 — loads MemoryNote, MemoryCheckpoint
