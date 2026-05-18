@@ -237,11 +237,11 @@ const SkillsSection: React.FC = () => {
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null)
   const [deletingSkill, setDeletingSkill] = useState<Skill | null>(null)
 
-  // Fetch skills from the Skills API
+  // Fetch skills from the Skills API, filtered by current project
   const { data: skills = [], isLoading, error } = useQuery({
-    queryKey: ['skills'],
+    queryKey: ['skills', currentProjectId],
     queryFn: async () => {
-      return await apiClient.getSkills()
+      return await apiClient.getSkills(undefined, currentProjectId)
     },
     refetchInterval: 30000,
   })

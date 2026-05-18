@@ -59,7 +59,8 @@
       "mcp__Claude_in_Chrome__tabs_context_mcp",
       "Bash(curl -s http://localhost:7891/api/codegraph/godot/status)",
       "Bash(curl -s http://localhost:7891/api/codegraph/status)",
-      "Bash(python -m pytest backend/tests/ -v --tb=short)"
+      "Bash(python -m pytest backend/tests/ -v --tb=short)",
+      "Bash(curl -s http://localhost:7891/api/projects/)"
     ],
     "deny": [],
     "ask": []
