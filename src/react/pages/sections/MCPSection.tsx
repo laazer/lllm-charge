@@ -223,6 +223,13 @@ export function MCPSection() {
 
   if (!mcpData) return null
 
+  // Safely access nested status properties with defaults
+  const tools = mcpData.status?.tools || { total: 0, totalCalls: 0, errors: 0, errorRate: 0, mostUsed: [], withErrors: [] }
+  const resources = mcpData.status?.resources || { total: 0, available: 0 }
+  const system = mcpData.status?.system || { totalRequests: 0, webSocketClients: 0, memoryUsage: { rss: 0, heapUsed: 0, heapTotal: 0, external: 0 }, nodeVersion: '' }
+  const cache = mcpData.status?.cache || { codeGraph: 0, docs: 0, memory: 0 }
+  const uptime = mcpData.status?.uptime || { ms: 0, formatted: 'N/A' }
+
   // Group tools by category with Django tools highlighted
   const toolsByCategory = mcpData.tools.reduce((acc, tool) => {
     const category = tool.category || 'Other'
@@ -353,48 +360,48 @@ export function MCPSection() {
         <StatusCard
           title="MCP Status"
           value={mcpData.status.isHealthy ? 'Healthy' : 'Unhealthy'}
-          description={`Uptime: ${mcpData.status.uptime?.formatted || 'N/A'}`}
+          description={`Uptime: ${uptime.formatted}`}
           status={mcpData.status.isHealthy ? 'success' : 'error'}
           icon={mcpData.status.isHealthy ? CpuChipIcon : ExclamationTriangleIcon}
-          trend={mcpData.status.tools.errorRate < 5 ? { value: 'Low error rate', isPositive: true } : { value: 'High error rate', isPositive: false }}
+          trend={tools.errorRate < 5 ? { value: 'Low error rate', isPositive: true } : { value: 'High error rate', isPositive: false }}
         />
 
         <MetricCard
           title="Active Tools"
-          value={mcpData.status.tools.total}
+          value={tools.total}
           color="blue"
           size="md"
           icon={CodeBracketIcon}
-          change={mcpData.status.tools.totalCalls > 0 ? { 
-            value: mcpData.status.tools.totalCalls, 
+          change={tools.totalCalls > 0 ? {
+            value: tools.totalCalls,
             period: 'total calls',
-            isPositive: true 
+            isPositive: true
           } : undefined}
         />
 
         <MetricCard
           title="Available Resources"
-          value={mcpData.status.resources.available}
+          value={resources.available}
           color="green"
           size="md"
           icon={DocumentIcon}
-          change={{ 
-            value: mcpData.status.resources.total, 
+          change={{
+            value: resources.total,
             period: 'total resources',
-            isPositive: true 
+            isPositive: true
           }}
         />
 
         <MetricCard
           title="Error Rate"
-          value={`${mcpData.status.tools.errorRate}%`}
-          color={mcpData.status.tools.errorRate > 10 ? "red" : "green"}
+          value={`${tools.errorRate}%`}
+          color={tools.errorRate > 10 ? "red" : "green"}
           size="md"
-          icon={mcpData.status.tools.errorRate > 10 ? BugAntIcon : ChartBarIcon}
-          change={mcpData.status.tools.errors > 0 ? { 
-            value: mcpData.status.tools.errors, 
+          icon={tools.errorRate > 10 ? BugAntIcon : ChartBarIcon}
+          change={tools.errors > 0 ? {
+            value: tools.errors,
             period: 'total errors',
-            isPositive: false 
+            isPositive: false
           } : undefined}
         />
       </div>
@@ -403,40 +410,40 @@ export function MCPSection() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <MetricCard
           title="Memory Usage"
-          value={formatMemory(mcpData.status.system.memoryUsage.heapUsed)}
+          value={formatMemory(system.memoryUsage?.heapUsed || 0)}
           color="purple"
           size="md"
           icon={ServerStackIcon}
-          change={{ 
-            value: formatMemory(mcpData.status.system.memoryUsage.heapTotal), 
+          change={{
+            value: formatMemory(system.memoryUsage?.heapTotal || 0),
             period: 'heap total',
-            isPositive: true 
+            isPositive: true
           }}
         />
 
         <MetricCard
           title="WebSocket Clients"
-          value={mcpData.status.system.webSocketClients}
+          value={system.webSocketClients}
           color="yellow"
           size="md"
           icon={CircleStackIcon}
-          change={{ 
-            value: mcpData.status.system.totalRequests, 
+          change={{
+            value: system.totalRequests,
             period: 'total requests',
-            isPositive: true 
+            isPositive: true
           }}
         />
 
         <MetricCard
           title="Cache Size"
-          value={mcpData.status.cache.codeGraph + mcpData.status.cache.docs + mcpData.status.cache.memory}
+          value={cache.codeGraph + cache.docs + cache.memory}
           color="gray"
           size="md"
           icon={ClockIcon}
-          change={{ 
-            value: `${mcpData.status.cache.codeGraph}/${mcpData.status.cache.docs}/${mcpData.status.cache.memory}`, 
+          change={{
+            value: `${cache.codeGraph}/${cache.docs}/${cache.memory}`,
             period: 'code/docs/memory',
-            isPositive: true 
+            isPositive: true
           }}
         />
       </div>
