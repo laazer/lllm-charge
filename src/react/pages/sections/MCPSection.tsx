@@ -353,7 +353,7 @@ export function MCPSection() {
         <StatusCard
           title="MCP Status"
           value={mcpData.status.isHealthy ? 'Healthy' : 'Unhealthy'}
-          description={`Uptime: ${mcpData.status.uptime.formatted}`}
+          description={`Uptime: ${mcpData.status.uptime?.formatted || 'N/A'}`}
           status={mcpData.status.isHealthy ? 'success' : 'error'}
           icon={mcpData.status.isHealthy ? CpuChipIcon : ExclamationTriangleIcon}
           trend={mcpData.status.tools.errorRate < 5 ? { value: 'Low error rate', isPositive: true } : { value: 'High error rate', isPositive: false }}
