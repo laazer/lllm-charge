@@ -270,12 +270,12 @@ const SkillsSection: React.FC = () => {
   const [deletingSkill, setDeletingSkill] = useState<Skill | null>(null)
 
   // Fetch skills (stored as specs with special tags)
+  // Skills are global and not tied to a specific project
   const { data: allSpecs = [], isLoading, error } = useQuery({
-    queryKey: ['skills', currentProjectId],
+    queryKey: ['skills'],
     queryFn: async () => {
       const specs = await apiClient.getSpecs()
-      // Filter for skills from the current project
-      return specs.filter(spec => isSkillSpec(spec) && spec.projectId === currentProjectId)
+      return specs.filter(isSkillSpec)
     },
     refetchInterval: 30000,
   })
